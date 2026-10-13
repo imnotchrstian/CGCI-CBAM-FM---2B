@@ -34,14 +34,23 @@ Deno.serve(async (request) => {
 
       const email = `student-${crypto.randomUUID()}@students.cbam2b.example.com`;
       const password = `${crypto.randomUUID()}${crypto.randomUUID()}`;
-      const { error } = await adminClient.auth.admin.createUser({
+      const { data: created, error } = await adminClient.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
         user_metadata: { full_name: fullName, section, codename },
       });
       if (error) return respond({ error: 'Registration could not be created.' }, 400);
-      return respond({ success: true, pendingApproval: true });
+      const { data: student, error: profileError } = await adminClient.from('profiles')
+        .update({ approved: true, registration_source: 'student' })
+        .eq('user_id', created.user.id)
+        .select('user_id,full_name,section,codename,approved,registration_source')
+        .single();
+      if (profileError) {
+        await adminClient.auth.admin.deleteUser(created.user.id);
+        return respond({ error: 'Registration was created but could not be activated. Please try again.' }, 500);
+      }
+      return respond({ success: true, student: { id: student.user_id, name: student.full_name, section: student.section, code: student.codename, approved: student.approved, registeredBy: student.registration_source }, grades: [] });
     }
 
     if (body.action === 'student-login') {
@@ -73,19 +82,25 @@ Deno.serve(async (request) => {
     if (profileError || callerProfile.role !== 'admin') return respond({ error: 'Administrator access required.' }, 403);
 
     if (body.action === 'create') {
-      const email = String(body.email || '').trim().toLowerCase();
-      const password = String(body.password || '');
-      const fullName = String(body.full_name || '').trim();
-      const section = String(body.section || '').trim();
+      const fullName = String(body.full_name || '').trim().replace(/\s+/g, ' ');
+      const section = String(body.section || '').trim().replace(/\s+/g, ' ');
       const codename = String(body.codename || '').trim().toUpperCase();
-      if (!email || password.length < 8 || !fullName || !section || !codename) return respond({ error: 'Provide an email, an eight-character password, and complete student details.' }, 400);
+      if (!/^\p{L}+(?:\s+\p{L}+)*$/u.test(fullName) || !section || section.length > 80 || !/^[A-Z0-9-]{3,32}$/.test(codename)) {
+        return respond({ error: 'Enter a valid full name, section, and codename.' }, 400);
+      }
+      const { data: existing, error: lookupError } = await adminClient.from('profiles').select('user_id').eq('codename', codename).maybeSingle();
+      if (lookupError) return respond({ error: 'Student record could not be checked.' }, 500);
+      if (existing) return respond({ error: 'That codename is already registered.' }, 409);
+
+      const email = `admin-created-${crypto.randomUUID()}@students.cbam2b.example.com`;
+      const password = `${crypto.randomUUID()}${crypto.randomUUID()}`;
       const { data, error } = await adminClient.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
         user_metadata: { full_name: fullName, section, codename },
       });
-      if (error) return respond({ error: error.message }, 400);
+      if (error) return respond({ error: `Student account could not be created: ${error.message}` }, 400);
       const { error: updateError } = await adminClient.from('profiles').update({
         approved: true,
         registration_source: 'administrator',

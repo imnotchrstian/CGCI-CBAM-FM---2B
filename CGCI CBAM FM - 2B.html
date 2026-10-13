@@ -208,7 +208,7 @@ table.rt td.act button{flex:1 1 0}
         <label for="regC">Codename</label><input id="regC" autocomplete="off" placeholder="e.g. Gold-024">
         <div class="err" id="eR" role="alert"></div>
         <button class="btn" style="width:100%;margin-top:6px">Register student</button>
-        <div class="muted" style="font-size:.8rem;margin-top:8px">An administrator must approve your registration before grades are available.</div>
+        <div class="muted" style="font-size:.8rem;margin-top:8px">After registration, you will go straight to your grades dashboard.</div>
         <div class="muted" style="text-align:center;margin-top:14px;font-size:.92rem">Already registered? <button type="button" class="linkbtn" id="goLog">Back to login</button></div>
       </form>
       <form id="fA" class="hidden" novalidate>
@@ -452,13 +452,13 @@ $('#fA').onsubmit=async e=>{e.preventDefault();const err=$('#eA');err.textConten
     const profile=await profileFor(data.user.id);if(profile.role!=='admin'||norm(profile.full_name)!==norm(ADMIN_NAME)){await db.auth.signOut();throw new Error('This account is not an administrator account.')}
     S=await loadRemote(profile);user={role:'admin',profile};renderAdmin();goPanel('pDash');show('admin');$('#fA').reset();
   }catch(error){err.textContent=error.message||'Could not sign in.'}};
-/* Self-registration creates a pending shared profile; approval is required before grade lookup. */
+/* Self-registration creates an active shared profile and opens the student dashboard. */
 $('#fR').onsubmit=async e=>{e.preventDefault();const err=$('#eR');
   const st={name:$('#regN').value.trim().replace(/\s+/g,' '),section:$('#regS').value.trim().replace(/\s+/g,' '),code:$('#regC').value.trim().toUpperCase()};
   const errs=validateStudent(S,st);err.innerHTML=errs.map(esc).join('<br>');if(errs.length)return;
   if(!BACKEND){err.textContent='Registration is unavailable until the administrator configures Supabase.';return}
   try{const {data,error}=await db.functions.invoke('admin-manage-student',{body:{action:'student-register',full_name:st.name,section:st.section,codename:st.code}});if(error)throw error;if(data?.error)throw new Error(data.error);
-    $('#fR').reset();$('#regS').value='CBAM FM - 2B';err.textContent='Registration submitted. Wait for administrator approval before logging in.';
+    S={students:[data.student],grades:data.grades||[],changes:0};user={role:'student',stu:data.student};renderStudent();show('student');$('#fR').reset();$('#regS').value='CBAM FM - 2B';toast('Registration complete. Welcome, '+data.student.name+'.');
   }catch(error){err.textContent=await functionError(error,'Registration could not be submitted.')}};
 /* Logout clears the session and returns to the login screen. */
 $$('[data-logout]').forEach(b=>b.onclick=async()=>{if(BACKEND)await db.auth.signOut();user=null;editId=null;clearForm();show('login');toast('You have been logged out.')});
