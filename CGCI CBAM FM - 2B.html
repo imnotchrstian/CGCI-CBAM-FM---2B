@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CGCI CBAM FM - 2B | Student Grade Management Portal</title>
+<style>
+:root{
+--y:#F5C928;--y-d:#E6B812;--ly:#FFF2A8;--w:#fff;--bg:#FFFBEA;--t:#262626;--s:#666;--b:#EEE4B8;--bad:#B3261E;--ok:#1E7B3A;
+--sans:"Segoe UI","Trebuchet MS",system-ui,-apple-system,Roboto,sans-serif;--serif:Georgia,"Palatino Linotype",serif;
+--max:1120px;--p:clamp(16px,3vw,36px);
+--sh:0 1px 2px rgba(120,100,20,.06),0 8px 24px rgba(120,100,20,.08)}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--t);line-height:1.5}
+button,input,select,textarea{font-family:inherit}
+h1,h2,h3{margin:.2em 0;line-height:1.2}
+.hidden{display:none!important}
+:focus-visible{outline:3px solid var(--t);outline-offset:2px}
+.card{background:var(--w);border:1px solid var(--b);border-radius:16px;padding:clamp(16px,2.2vw,24px);box-shadow:var(--sh)}
+.card>h2{margin:0 0 4px;font-size:1.15rem}
+.enter{animation:rise .5s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* buttons */
+button{cursor:pointer;border:0;border-radius:10px;padding:10px 18px;min-height:42px;font-weight:700;font-size:.95rem;line-height:1.2;transition:transform .15s,background .2s,box-shadow .2s}
+button:hover{transform:translateY(-1px)}
+button:active{transform:none}
+button:disabled{opacity:.65;cursor:progress;transform:none}
+.btn{background:var(--y);color:var(--t);box-shadow:0 1px 0 rgba(0,0,0,.08)}.btn:hover{background:var(--y-d)}
+.btn2{background:var(--w);border:1px solid var(--b);color:var(--t)}.btn2:hover{background:var(--bg)}
+.btn.danger{background:#fbe3e1;color:var(--bad)}.btn.danger:hover{background:#f6d0cc}
+.sm{padding:6px 12px;min-height:34px;font-size:.82rem}
+
+/* forms */
+label{display:block;font-weight:700;font-size:.85rem;margin:14px 0 6px}
+input,select,textarea{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--b);border-radius:10px;background:#fff;font-size:1rem;color:var(--t);transition:border-color .2s,box-shadow .2s}
+input:hover,select:hover{border-color:#d9c97a}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:0;border-color:var(--t);box-shadow:0 0 0 3px var(--y)}
+input[type=file]{padding:8px 10px;min-height:0}
+.err{color:var(--bad);font-size:.88rem;min-height:1.3em;margin-top:8px}
+.muted{color:var(--s)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
+
+/* login */
+#login{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:1fr 1fr}
+.hero{background:var(--y);padding:clamp(28px,6vw,72px);display:flex;flex-direction:column;justify-content:center;align-items:flex-start;position:relative;overflow:hidden}
+.hero>*:not(.blob){position:relative;z-index:1}
+.hero h1{font-family:var(--serif);font-size:clamp(2rem,4.4vw,3.2rem);line-height:1.08;letter-spacing:-.02em;margin:0 0 6px}
+.hero .sub{font-style:italic;font-size:clamp(1rem,1.8vw,1.2rem)}
+.blob{position:absolute;border-radius:50%;background:var(--ly);opacity:.6;animation:float 9s ease-in-out infinite}
+.blob.a{width:280px;height:280px;right:-80px;top:-70px}.blob.b{width:170px;height:170px;left:-50px;bottom:30px;animation-delay:-4s}
+@keyframes float{50%{transform:translateY(18px)}}
+.attract{margin-top:clamp(20px,4vw,36px);min-height:2.6em;max-width:22ch;font-size:clamp(1.25rem,2.4vw,1.6rem);line-height:1.3;font-weight:700;transition:opacity .6s,transform .6s}
+.attract.out{opacity:0;transform:translateY(8px)}
+.pause{margin-top:14px;background:rgba(255,255,255,.6);width:fit-content;min-height:36px;padding:8px 14px;font-size:.85rem}
+.pause:hover{background:rgba(255,255,255,.85)}
+.formside{display:flex;align-items:center;justify-content:center;padding:clamp(16px,4vw,48px)}
+.formside .card{width:100%;max-width:440px;padding:clamp(20px,3vw,32px)}
+.formside .card>h2{font-size:1.4rem;margin-bottom:12px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--ly);padding:5px;border-radius:12px;margin-bottom:6px}
+.tab{background:transparent;border-radius:9px;padding:10px 8px;font-size:.9rem}
+.tab:hover{background:rgba(255,255,255,.5)}
+.tab[aria-selected=true]{background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.linkbtn{background:none;padding:2px 4px;min-height:0;color:var(--t);text-decoration:underline;font-weight:700;border-radius:6px}
+.linkbtn:hover{background:var(--ly);transform:none}
+.warn{background:var(--ly);border-radius:10px;padding:10px 12px;font-size:.82rem;margin-top:14px}
+
+/* app shell */
+.shell{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+.side{display:flex;flex-direction:column;background:var(--w);border-right:1px solid var(--b);padding:24px 14px;position:sticky;top:0;height:100vh;height:100dvh}
+.side h2{font-size:1.05rem;margin:0 0 2px;padding:0 8px}
+.side .muted{padding:0 8px}
+.nav{display:flex;flex-direction:column;gap:4px;margin-top:20px;flex:1}
+.nav button{background:transparent;text-align:left;border-radius:10px;padding:11px 14px;font-weight:600}
+.nav button:hover{background:var(--ly);transform:none}
+.nav button.on{background:var(--y);font-weight:700}
+.nav button[data-logout]{margin-top:auto;border:1px solid var(--b);text-align:center}
+main{padding:var(--p);min-width:0;width:100%;max-width:var(--max);margin-inline:auto}
+.top{background:var(--y);padding-block:20px;padding-inline:max(var(--p),calc((100% - var(--max))/2 + var(--p)));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.top h1{font-size:clamp(1.3rem,3vw,1.8rem);margin:0}
+.top .real{margin-top:2px}
+.top .btn2{border-color:rgba(0,0,0,.15)}
+#pDash>h1{font-size:clamp(1.5rem,3vw,2rem);margin:0}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:20px 0}
+.stat{border-top:4px solid var(--y);display:flex;flex-direction:column;gap:2px}
+.stat>span{font-size:.85rem;font-weight:600}
+.stat b{display:block;font-size:clamp(1.8rem,3vw,2.3rem);line-height:1.2}
+#student .stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(min-width:1180px){#stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* tables */
+.scroll{overflow-x:auto;margin-top:14px;border:1px solid var(--b);border-radius:12px;background:#fff}
+.scroll:has(.empty){border:0}
+table{width:100%;border-collapse:separate;border-spacing:0;min-width:640px}
+th,td{padding:12px 14px;border-bottom:1px solid var(--b);text-align:left;font-size:.92rem;vertical-align:middle}
+th{background:var(--ly);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:#FFFCEB}
+td.act{white-space:nowrap}
+td.act button+button{margin-left:6px}
+.code{background:var(--y);padding:2px 8px;border-radius:8px;font-weight:700;white-space:nowrap}
+.hi{background:var(--ly);font-weight:700;border-radius:6px;padding:2px 8px}
+.empty{text-align:center;padding:40px 12px;color:var(--s)}
+.empty .ic{font-size:2.4rem}
+.empty b{display:block;color:var(--t);margin-top:4px}
+.res{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--b)}
+.pass,.fail{font-weight:700;min-width:48px}.pass{color:var(--ok)}.fail{color:var(--bad)}
+
+/* toasts, dialog, misc */
+#toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:50;max-width:min(380px,calc(100vw - 32px))}
+.toast{background:var(--t);color:#fff;padding:12px 16px;border-radius:12px;border-left:6px solid var(--y);box-shadow:0 8px 24px rgba(0,0,0,.2);animation:rise .3s both}
+.toast.bad{border-color:#ff6b61}
+dialog{border:0;border-radius:16px;padding:24px;width:calc(100% - 32px);max-width:400px;color:var(--t);box-shadow:0 20px 50px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(38,38,38,.5);backdrop-filter:blur(2px)}
+dialog p{margin:0}
+dialog .row{justify-content:flex-end;margin-top:20px}
+.spin{width:18px;height:18px;border:3px solid var(--b);border-top-color:var(--t);border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+.real{font-size:1.1rem;font-weight:700}
+
+/* tablet: two-column forms, stacked login, top nav */
+@media(max-width:1020px){
+.grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid>div:last-child:nth-child(odd){grid-column:1/-1}
+}
+@media(max-width:900px){
+#login{grid-template-columns:1fr;grid-template-rows:auto 1fr;min-height:100dvh}
+.hero{padding:28px 20px 56px}
+.attract{max-width:none;min-height:2.6em}
+.formside{align-items:flex-start;padding:0 16px 24px;margin-top:-28px;position:relative;z-index:2}
+.shell{grid-template-columns:minmax(0,1fr)}
+.side{position:sticky;top:0;z-index:20;height:auto;border-right:0;border-bottom:1px solid var(--b);padding:12px 14px 10px;flex-direction:column}
+.side h2,.side .muted{padding:0}
+.nav{flex-direction:row;overflow-x:auto;margin-top:10px;gap:6px;padding-bottom:4px;flex:0 0 auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.nav::-webkit-scrollbar{display:none}
+.nav button{white-space:nowrap;flex:0 0 auto;padding:9px 14px;background:var(--bg)}
+.nav button.on{background:var(--y)}
+.nav button[data-logout]{margin-top:0;margin-left:auto}
+}
+
+/* phone: single column, stacked table cards */
+@media(max-width:760px){
+.card{border-radius:14px}
+.top{padding-block:16px}
+input,select,textarea{font-size:16px}
+.row .btn,.row .btn2{flex:1 1 140px}
+.scroll{border:0;background:transparent;overflow:visible}
+table.rt{min-width:0}
+table.rt thead{display:none}
+table.rt,table.rt tbody,table.rt tr,table.rt td{display:block;width:100%}
+table.rt tr{border:1px solid var(--b);border-radius:12px;padding:4px 14px;margin-bottom:10px;background:#fff}
+table.rt tbody tr:last-child td{border-bottom:1px dashed var(--b)}
+table.rt td{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px dashed var(--b);padding:9px 0;text-align:right;overflow-wrap:anywhere}
+table.rt td:last-child,table.rt tbody tr:last-child td:last-child{border-bottom:0}
+table.rt tbody tr:hover td{background:transparent}
+table.rt td::before{content:attr(data-l);font-weight:700;color:var(--s);text-align:left;font-size:.8rem;flex:0 0 auto}
+table.rt td.act{justify-content:flex-end;gap:8px;white-space:normal;padding:12px 0 10px}
+table.rt td.act::before{display:none}
+table.rt td.act button+button{margin-left:0}
+table.rt td.act button{flex:1 1 0}
+#toasts{left:12px;right:12px;bottom:12px;max-width:none}
+}
+@media(max-width:640px){
+.grid{grid-template-columns:1fr}
+.stat{padding:14px 16px}
+#student .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+#student .stats .stat:last-child{grid-column:1/-1}
+.tab{font-size:.84rem;padding:10px 4px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="toasts" aria-live="polite"></div>
+<dialog id="dlg"><p id="dlgMsg"></p><div class="row"><button class="btn danger" id="dlgOk">Delete</button><button class="btn2" id="dlgNo">Cancel</button></div></dialog>
+
+<!-- LOGIN + ATTRACT MODE -->
+<section id="login">
+  <div class="hero">
+    <span class="blob a"></span><span class="blob b"></span>
+    <h1>CGCI CBAM FM - 2B</h1>
+    <div class="sub">Student Grade Management Portal</div>
+    <div class="attract" id="attract" aria-hidden="true"></div>
+    <button class="pause" id="pauseBtn" aria-pressed="false">Pause messages</button>
+  </div>
+  <div class="formside">
+    <div class="card enter">
+      <h2>Log in</h2>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="tS" aria-selected="true">Student Login</button>
+        <button class="tab" role="tab" id="tA" aria-selected="false">Administrator Login</button>
+      </div>
+      <form id="fS" novalidate>
+        <label for="sN">Codename</label><input id="sN" autocomplete="off">
+        <label for="sS">Section</label><input id="sS" autocomplete="off">
+        <div class="err" id="eS" role="alert"></div>
+        <button class="btn" style="width:100%;margin-top:6px">View my grades</button>
+        <div class="muted" style="text-align:center;margin-top:14px;font-size:.92rem">New student? <button type="button" class="linkbtn" id="goReg">Register here</button></div>
+      </form>
+      <form id="fR" class="hidden" novalidate>
+        <label for="regN">Full Name</label><input id="regN" autocomplete="off" placeholder="e.g. Juan Dela Cruz">
+        <label for="regS">Section</label><input id="regS" autocomplete="off" value="CBAM FM - 2B">
+        <label for="regC">Codename</label><input id="regC" autocomplete="off" placeholder="e.g. Gold-024">
+        <div class="err" id="eR" role="alert"></div>
+        <button class="btn" style="width:100%;margin-top:6px">Register and view my grades</button>
+        <div class="muted" style="font-size:.8rem;margin-top:8px">Remember your codename and section. You will use them to log in next time.</div>
+        <div class="muted" style="text-align:center;margin-top:14px;font-size:.92rem">Already registered? <button type="button" class="linkbtn" id="goLog">Back to login</button></div>
+      </form>
+      <form id="fA" class="hidden" novalidate>
+        <label for="aN">Administrator Name</label><input id="aN" autocomplete="off">
+        <label for="aP">Password</label><input id="aP" type="password" autocomplete="off">
+        <div class="err" id="eA" role="alert"></div>
+        <button class="btn" style="width:100%;margin-top:6px">Log in as administrator</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- STUDENT DASHBOARD -->
+<section id="student" class="hidden">
+  <div class="top"><div><h1 id="stW"></h1><div class="real" id="stName"></div><div id="stSec"></div></div><button class="btn2" data-logout>Log out</button></div>
+  <main>
+    <div class="stats">
+      <div class="card stat"><span class="muted">Subjects</span><b id="stSub">0</b></div>
+      <div class="card stat"><span class="muted">Grade records</span><b id="stCnt">0</b></div>
+      <div class="card stat"><span class="muted">Overall average</span><b id="stAvg">-</b></div>
+    </div>
+    <div class="card"><h2>My grades</h2><div class="scroll" id="stTbl"></div></div>
+  </main>
+</section>
+
+<!-- ADMIN DASHBOARD -->
+<section id="admin" class="hidden">
+  <div class="shell">
+    <aside class="side">
+      <h2>CGCI CBAM FM - 2B</h2><div class="muted" style="font-size:.85rem">Administrator</div>
+      <nav class="nav" id="nav" aria-label="Admin navigation">
+        <button data-p="pDash">Dashboard</button><button data-p="pGrades">Grade Management</button>
+        <button data-p="pStud">Student Records</button><button data-logout>Logout</button>
+      </nav>
+    </aside>
+    <main>
+      <div class="panel" id="pDash">
+        <h1>Welcome, Honey Grace Capili</h1><div class="muted">Administrator</div>
+        <div class="stats" id="stats"></div>
+      </div>
+
+      <div class="panel hidden" id="pGrades">
+        <div class="card">
+          <h2 id="formTitle">Add grade record</h2>
+          <form id="gF" novalidate>
+            <div class="grid">
+              <div><label for="gC">Codename</label><input id="gC" list="codes" autocomplete="off" placeholder="GOLD-024"></div>
+              <div><label for="gN">Student Full Name</label><input id="gN"></div>
+              <div><label for="gSec">Section</label><input id="gSec"></div>
+              <div><label for="gSub">Subject Name</label><input id="gSub" placeholder="Business Mathematics"></div>
+              <div><label for="gG">Grade (0-100)</label><input id="gG" type="number" min="0" max="100" step="0.01"></div>
+              <div><label for="gP">Grading Period</label><select id="gP"><option value="">Select...</option><option>Prelim</option><option>Midterm</option><option>Pre-Final</option><option>Final</option></select></div>
+            </div>
+            <label for="gR">Remarks (optional)</label><input id="gR">
+            <datalist id="codes"></datalist>
+            <div class="err" id="gE" role="alert"></div>
+            <div class="row"><button class="btn" id="gSave">Save record</button><button type="button" class="btn2" id="gCancel">Clear form</button></div>
+          </form>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h2>Gradebook</h2>
+          <div class="grid">
+            <div><label for="q">Search</label><input id="q" type="search" placeholder="Codename, student, subject, section"></div>
+            <div><label for="fSub">Subject</label><select id="fSub"></select></div>
+            <div><label for="fP">Grading period</label><select id="fP"><option value="">All periods</option><option>Prelim</option><option>Midterm</option><option>Pre-Final</option><option>Final</option></select></div>
+          </div>
+          <div class="row"><button class="btn2" id="csvBtn">Export CSV</button></div>
+          <div class="scroll" id="gTbl"></div>
+        </div>
+      </div>
+
+      <div class="panel hidden" id="pStud">
+        <div class="card">
+          <h2>Register student</h2>
+          <form id="sF" novalidate>
+            <div class="grid">
+              <div><label for="rN">Full Name</label><input id="rN"></div>
+              <div><label for="rS">Section</label><input id="rS" value="CBAM FM - 2B"></div>
+              <div><label for="rC">Codename (unique)</label><input id="rC" placeholder="STAR-015"></div>
+            </div>
+            <div class="err" id="rE" role="alert"></div>
+            <div class="row"><button class="btn">Add student</button></div>
+          </form>
+        </div>
+        <div class="card" style="margin-top:16px"><h2>Student records</h2><div class="scroll" id="sTbl"></div></div>
+      </div>
+
+      <div class="panel hidden" id="pTest">
+        <div class="card">
+          <h2>System Testing</h2>
+          <p class="muted">Prototype testing tool only. It runs on temporary copies of the data, never changes your real records, and is not a substitute for production security testing.</p>
+          <button class="btn" id="runT">Run System Test</button>
+          <div id="tSum" style="margin:14px 0;font-weight:700"></div><div id="tRes"></div>
+        </div>
+      </div>
+
+      <div class="panel hidden" id="pPriv">
+        <div class="card">
+          <h2>Privacy and Codenames</h2>
+          <p>A codename is a pseudonym, not anonymity: this system stores each student's real name next to their codename, so the mapping is confidential. Keep it limited to authorized personnel. Student accounts only ever see their own records.</p>
+          <p><b>Data storage:</b> This static demo saves data only in this browser's <code>localStorage</code>. It is not shared between users or devices, and anyone with access to this browser can read it. Do not store real student grades here.</p>
+          <p><b>For real use:</b> use a backend with server-side authentication, hashed passwords, authenticated sessions, role-based access control, input validation, and prepared statements. Hidden HTML elements and client-side role checks cannot protect private data.</p>
+          <div class="row"><button class="btn2" id="backupBtn">Download full data backup</button></div>
+          <label for="restoreFile">Restore a full data backup</label>
+          <input id="restoreFile" type="file" accept="application/json,.json">
+          <button class="btn danger" id="resetBtn">Reset all prototype data</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</section>
+
+<script>
+/* ===== Data & constants ===== */
+const KEY='cbam2b_data_v1';
+const ADMIN={name:'Honey Grace Capili',pw:'CBAM2B!2026'};
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
+/* Sample data: one student, one codename, NO invented grades. */
+const seed=()=>({students:[{name:'Saint Mae Diamsey',section:'CBAM FM - 2B',code:'GOLD-024'}],grades:[],changes:0});
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.students)&&Array.isArray(d.grades))return d}catch(e){}return seed()}
+function save(){localStorage.setItem(KEY,JSON.stringify(S))}
+let S=load(), user=null, editId=null;
+
+/* ===== Pure logic (takes state as argument so tests can use temp copies) ===== */
+/* Students log in with codename + section (never with their real name). */
+function authStudent(st,code,sec){return st.students.find(x=>norm(x.code)===norm(code)&&norm(x.section)===norm(sec))||null}
+function authAdmin(n,pw){return norm(n)===norm(ADMIN.name)&&pw===ADMIN.pw}
+/* Returns list of error strings for a grade record; skipId = record being edited. */
+function validateGrade(st,r,skipId){
+  const e=[];
+  if(!r.code||!r.student||!r.section||!r.subject||!r.period||r.grade===''||r.grade==null)e.push('Fill in every required field (remarks are optional).');
+  const g=Number(r.grade);
+  if(r.grade!==''&&r.grade!=null&&(isNaN(g)||g<0||g>100))e.push('Grade must be a number from 0 to 100.');
+  if(r.code){const s=st.students.find(x=>norm(x.code)===norm(r.code));
+    if(!s||norm(s.name)!==norm(r.student)||norm(s.section)!==norm(r.section))e.push('Codename, name, and section must match a registered student.');}
+  if(st.grades.some(x=>x.id!==skipId&&norm(x.code)===norm(r.code)&&norm(x.subject)===norm(r.subject)&&x.period===r.period))
+    e.push('A record for this student, subject, and period already exists. Edit it instead.');
+  return e;
+}
+function validateStudent(st,s){
+  const e=[];
+  if(!s.name||!s.section||!s.code)e.push('Name, section, and codename are required.');
+  else if(!/^\p{L}+(?:\s+\p{L}+)*$/u.test(s.name))e.push('Name may contain letters and spaces only.');
+  if(s.code&&st.students.some(x=>norm(x.code)===norm(s.code)))e.push('That codename is already taken.');
+  if(s.name&&st.students.some(x=>norm(x.name)===norm(s.name)&&norm(x.section)===norm(s.section)))e.push('This student is already registered.');
+  return e;
+}
+/* Search by codename/student/subject/section plus subject and period filters. */
+function filterGrades(st,q,sub,per){
+  q=norm(q);
+  return st.grades.filter(g=>(!q||[g.code,g.student,g.subject,g.section].some(v=>norm(v).includes(q)))&&(!sub||g.subject===sub)&&(!per||g.period===per));
+}
+/* Grades belong to a student by codename (unique), not by name. */
+const gradesFor=(st,stu)=>st.grades.filter(g=>norm(g.code)===norm(stu.code));
+const average=list=>list.length?list.reduce((a,g)=>a+Number(g.grade),0)/list.length:null;
+function stats(st){return{students:st.students.length,records:st.grades.length,subjects:new Set(st.grades.map(g=>norm(g.subject))).size,changes:st.changes||0}}
+function toCSV(list){
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  return [['Codename','Student','Section','Subject','Period','Grade','Remarks']].concat(list.map(g=>[g.code,g.student,g.section,g.subject,g.period,g.grade,g.remarks])).map(r=>r.map(q).join(',')).join('\r\n');
+}
+function validateBackup(data){
+  if(!data||data.format!=='cbam2b-backup-v1'||!Array.isArray(data.students)||!Array.isArray(data.grades))
+    throw new Error('This is not a supported CGCI CBAM FM - 2B backup.');
+  const students=data.students.map(s=>{
+    if(!s||typeof s.name!=='string'||typeof s.section!=='string'||typeof s.code!=='string'||!s.name.trim()||!s.section.trim()||!s.code.trim())
+      throw new Error('The backup contains an invalid student record.');
+    return {name:s.name,section:s.section,code:s.code};
+  });
+  if(new Set(students.map(s=>norm(s.code))).size!==students.length)
+    throw new Error('The backup contains duplicate student codenames.');
+  const grades=data.grades.map(g=>{
+    const student=students.find(s=>norm(s.code)===norm(g?.code));
+    const grade=Number(g?.grade);
+    if(!g||!student||student.name!==g.student||student.section!==g.section||typeof g.subject!=='string'||!g.subject.trim()||
+      !['Prelim','Midterm','Pre-Final','Final'].includes(g.period)||!Number.isFinite(grade)||grade<0||grade>100||typeof g.id!=='string'||!g.id)
+      throw new Error('The backup contains an invalid grade record.');
+    return {...g,grade,remarks:typeof g.remarks==='string'?g.remarks:''};
+  });
+  if(new Set(grades.map(g=>g.id)).size!==grades.length)
+    throw new Error('The backup contains duplicate grade record IDs.');
+  return {students,grades,changes:Number.isSafeInteger(data.changes)&&data.changes>=0?data.changes:0};
+}
+
+/* ===== UI helpers ===== */
+function toast(msg,bad){const t=document.createElement('div');t.className='toast'+(bad?' bad':'');t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),3200)}
+/* Confirmation dialog; resolves true when confirmed. */
+function confirmBox(msg){return new Promise(res=>{const d=$('#dlg');$('#dlgMsg').textContent=msg;d.showModal();
+  const done=v=>{d.close();$('#dlgOk').onclick=$('#dlgNo').onclick=null;res(v)};
+  $('#dlgOk').onclick=()=>done(true);$('#dlgNo').onclick=()=>done(false);d.oncancel=()=>res(false)})}
+function show(id){['login','student','admin'].forEach(x=>$('#'+x).classList.toggle('hidden',x!==id));const el=$('#'+id);el.classList.remove('enter');void el.offsetWidth;el.classList.add('enter');window.scrollTo(0,0)}
+function empty(icon,t,sub){return `<div class="empty"><div class="ic">${icon}</div><b>${esc(t)}</b><div>${esc(sub)}</div></div>`}
+
+/* ===== Attract mode (decorative only; never bypasses login) ===== */
+const MSGS=['Welcome to CGCI CBAM FM - 2B!','Your Academic Progress, Organized.','Simple. Smart. Student-Focused.','Log in to view your grades.','Learning Today, Succeeding Tomorrow.'];
+let mi=0,paused=false;
+function showMsg(){const a=$('#attract');a.textContent=MSGS[mi]}
+showMsg();
+setInterval(()=>{if(paused||document.hidden||$('#login').classList.contains('hidden'))return;
+  const a=$('#attract');a.classList.add('out');setTimeout(()=>{mi=(mi+1)%MSGS.length;showMsg();a.classList.remove('out')},600)},4500);
+$('#pauseBtn').onclick=e=>{paused=!paused;e.target.setAttribute('aria-pressed',paused);e.target.textContent=paused?'Resume messages':'Pause messages';
+  $$('.blob').forEach(b=>b.style.animationPlayState=paused?'paused':'running')};
+
+/* ===== Login ===== */
+/* Register is not a tab: it opens from the link under "View my grades" (student side). */
+function pickTab(k){const stuSide=k==='S'||k==='R';$('#tS').setAttribute('aria-selected',stuSide);$('#tA').setAttribute('aria-selected',!stuSide);
+  $('#fS').classList.toggle('hidden',k!=='S');$('#fR').classList.toggle('hidden',k!=='R');$('#fA').classList.toggle('hidden',k!=='A')}
+$('#tS').onclick=()=>pickTab('S');$('#tA').onclick=()=>pickTab('A');$('#goReg').onclick=()=>{pickTab('R');$('#regN').focus()};$('#goLog').onclick=()=>{pickTab('S');$('#sN').focus()};
+function withLoading(btn,fn){const old=btn.innerHTML;btn.innerHTML='<span class="spin"></span> Checking...';btn.disabled=true;setTimeout(()=>{btn.innerHTML=old;btn.disabled=false;fn()},450)}
+$('#fS').onsubmit=e=>{e.preventDefault();const n=$('#sN').value,s=$('#sS').value,err=$('#eS');err.textContent='';
+  if(!n.trim()||!s.trim()){err.textContent='Enter both your codename and section.';return}
+  withLoading(e.submitter||$('#fS button'),()=>{const stu=authStudent(S,n,s);
+    if(!stu){err.textContent='No student matches that codename and section. Check them, or ask your administrator.';return}
+    user={role:'student',stu};renderStudent();show('student');$('#fS').reset()})};
+$('#fA').onsubmit=e=>{e.preventDefault();const n=$('#aN').value,p=$('#aP').value,err=$('#eA');err.textContent='';
+  if(!n.trim()||!p){err.textContent='Enter the administrator name and password.';return}
+  withLoading(e.submitter||$('#fA button'),()=>{if(!authAdmin(n,p)){err.textContent='Those credentials are not valid.';return}
+    user={role:'admin'};renderAdmin();goPanel('pDash');show('admin');$('#fA').reset()})};
+/* Student self-registration: validates, saves, then logs the student straight in. */
+$('#fR').onsubmit=e=>{e.preventDefault();const err=$('#eR');
+  const st={name:$('#regN').value.trim().replace(/\s+/g,' '),section:$('#regS').value.trim().replace(/\s+/g,' '),code:$('#regC').value.trim().toUpperCase()};
+  const errs=validateStudent(S,st);err.innerHTML=errs.map(esc).join('<br>');if(errs.length)return;
+  S.students.push(st);save();user={role:'student',stu:st};renderStudent();show('student');
+  $('#fR').reset();$('#regS').value='CBAM FM - 2B';toast('Registered! Your codename is '+st.code+'.')};
+/* Logout clears the session and returns to the login screen. */
+$$('[data-logout]').forEach(b=>b.onclick=()=>{user=null;editId=null;clearForm();show('login');toast('You have been logged out.')});
+
+/* ===== Student dashboard (only the logged-in student's rows) ===== */
+function renderStudent(){
+  if(!user||user.role!=='student')return;
+  const s=user.stu,list=gradesFor(S,s),avg=average(list);
+  $('#stW').textContent='Welcome, '+s.code;$('#stName').textContent=s.name;$('#stSec').textContent='Section: '+s.section;
+  $('#stSub').textContent=new Set(list.map(g=>norm(g.subject))).size;$('#stCnt').textContent=list.length;
+  $('#stAvg').textContent=avg==null?'-':avg.toFixed(2);
+  $('#stTbl').innerHTML=list.length?`<table class="rt"><thead><tr><th>Subject</th><th>Period</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>${list.map(g=>`<tr><td data-l="Subject">${esc(g.subject)}</td><td data-l="Period">${esc(g.period)}</td><td data-l="Grade"><span class="${g.grade>=90?'hi':''}">${esc(g.grade)}</span></td><td data-l="Remarks">${esc(g.remarks||'-')}</td></tr>`).join('')}</tbody></table>`
+    :empty('📒','No grades yet','Your grades will appear here once your administrator records them.');
+}
+
+/* ===== Admin ===== */
+function goPanel(id){$$('.panel').forEach(p=>p.classList.toggle('hidden',p.id!==id));$$('#nav button[data-p]').forEach(b=>b.classList.toggle('on',b.dataset.p===id))}
+$$('#nav button[data-p]').forEach(b=>b.onclick=()=>goPanel(b.dataset.p));
+function renderAdmin(){
+  const st=stats(S);
+  $('#stats').innerHTML=[['Registered students',st.students],['Grade records',st.records],['Subjects recorded',st.subjects],['Records added or updated',st.changes]].map(x=>`<div class="card stat"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('');
+  $('#codes').innerHTML=S.students.map(s=>`<option value="${esc(s.code)}">${esc(s.name)}</option>`).join('');
+  const cur=$('#fSub').value,subs=[...new Set(S.grades.map(g=>g.subject))].sort();
+  $('#fSub').innerHTML='<option value="">All subjects</option>'+subs.map(s=>`<option ${s===cur?'selected':''}>${esc(s)}</option>`).join('');
+  renderGrades();
+  $('#sTbl').innerHTML=S.students.length?`<table class="rt"><thead><tr><th>Codename</th><th>Name</th><th>Section</th><th>Records</th><th>Action</th></tr></thead><tbody>${S.students.map(s=>`<tr><td data-l="Codename"><span class="code">${esc(s.code)}</span></td><td data-l="Name">${esc(s.name)}</td><td data-l="Section">${esc(s.section)}</td><td data-l="Records">${gradesFor(S,s).length}</td><td class="act"><button class="btn danger sm" data-ds="${esc(s.code)}">Delete</button></td></tr>`).join('')}</tbody></table>`:empty('🎓','No students','Register a student above.');
+}
+function renderGrades(){
+  const list=filterGrades(S,$('#q').value,$('#fSub').value,$('#fP').value);
+  $('#gTbl').innerHTML=list.length?`<table class="rt"><thead><tr><th>Codename</th><th>Student</th><th>Section</th><th>Subject</th><th>Period</th><th>Grade</th><th>Actions</th></tr></thead><tbody>${list.map(g=>`<tr><td data-l="Codename"><span class="code">${esc(g.code)}</span></td><td data-l="Student">${esc(g.student)}</td><td data-l="Section">${esc(g.section)}</td><td data-l="Subject">${esc(g.subject)}</td><td data-l="Period">${esc(g.period)}</td><td data-l="Grade"><span class="${g.grade>=90?'hi':''}">${esc(g.grade)}</span></td><td class="act"><button class="btn2 sm" data-e="${g.id}">Edit</button> <button class="btn danger sm" data-d="${g.id}">Delete</button></td></tr>`).join('')}</tbody></table>`
+    :empty('📝',S.grades.length?'No matching records':'No grade records yet',S.grades.length?'Try a different search or filter.':'Add the first grade record using the form above.');
+}
+['q','fSub','fP'].forEach(i=>$('#'+i).oninput=renderGrades);
+
+/* Autofill name/section when a registered codename is typed. */
+$('#gC').oninput=()=>{const s=S.students.find(x=>norm(x.code)===norm($('#gC').value));if(s){$('#gN').value=s.name;$('#gSec').value=s.section}};
+function clearForm(){editId=null;$('#gF').reset();$('#gE').textContent='';$('#formTitle').textContent='Add grade record';$('#gSave').textContent='Save record'}
+$('#gCancel').onclick=clearForm;
+/* Create or update a grade record. */
+$('#gF').onsubmit=e=>{e.preventDefault();
+  const r={code:$('#gC').value.trim().toUpperCase(),student:$('#gN').value.trim(),section:$('#gSec').value.trim(),subject:$('#gSub').value.trim(),grade:$('#gG').value,period:$('#gP').value,remarks:$('#gR').value.trim()};
+  const errs=validateGrade(S,r,editId);$('#gE').innerHTML=errs.map(esc).join('<br>');
+  if(errs.length){toast('Fix the highlighted problems.',true);return}
+  r.grade=Number(r.grade);
+  if(editId){Object.assign(S.grades.find(g=>g.id===editId),r);toast('Grade record updated.')}
+  else{r.id='g'+Date.now()+Math.random().toString(36).slice(2,6);S.grades.push(r);toast('Grade record added.')}
+  S.changes=(S.changes||0)+1;save();clearForm();renderAdmin()};
+/* Edit/Delete via event delegation on the tables. */
+$('#gTbl').onclick=async e=>{
+  const eb=e.target.closest('[data-e]'),db=e.target.closest('[data-d]');
+  if(eb){const g=S.grades.find(x=>x.id===eb.dataset.e);editId=g.id;
+    $('#gC').value=g.code;$('#gN').value=g.student;$('#gSec').value=g.section;$('#gSub').value=g.subject;$('#gG').value=g.grade;$('#gP').value=g.period;$('#gR').value=g.remarks||'';
+    $('#formTitle').textContent='Edit grade record';$('#gSave').textContent='Update record';$('#gF').scrollIntoView({behavior:'smooth'});$('#gC').focus()}
+  if(db&&await confirmBox('Delete this grade record? This cannot be undone.')){
+    S.grades=S.grades.filter(g=>g.id!==db.dataset.d);if(editId===db.dataset.d)clearForm();save();renderAdmin();toast('Grade record deleted.')}};
+$('#sF').onsubmit=e=>{e.preventDefault();
+  const s={name:$('#rN').value.trim(),section:$('#rS').value.trim(),code:$('#rC').value.trim().toUpperCase()};
+  const errs=validateStudent(S,s);$('#rE').innerHTML=errs.map(esc).join('<br>');if(errs.length)return;
+  S.students.push(s);save();$('#sF').reset();$('#rS').value='CBAM FM - 2B';renderAdmin();toast('Student registered.')};
+$('#sTbl').onclick=async e=>{const b=e.target.closest('[data-ds]');if(!b)return;
+  if(await confirmBox('Delete this student and all of their grade records?')){
+    const s=S.students.find(x=>x.code===b.dataset.ds);S.grades=S.grades.filter(g=>norm(g.code)!==norm(s.code));
+    if(editId&&!S.grades.some(g=>g.id===editId))clearForm();
+    S.students=S.students.filter(x=>x!==s);save();renderAdmin();toast('Student deleted.')}};
+$('#csvBtn').onclick=()=>{const list=filterGrades(S,$('#q').value,$('#fSub').value,$('#fP').value);
+  if(!list.length){toast('No records to export.',true);return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+toCSV(list)],{type:'text/csv'}));a.download='cbam-fm-2b-grades.csv';a.click();toast('CSV exported.')};
+$('#backupBtn').onclick=()=>{
+  const data={format:'cbam2b-backup-v1',exportedAt:new Date().toISOString(),students:S.students,grades:S.grades,changes:S.changes||0};
+  const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.href=url;a.download='cbam-fm-2b-backup.json';a.click();URL.revokeObjectURL(url);toast('Full data backup downloaded.')};
+$('#restoreFile').onchange=async e=>{
+  const file=e.target.files&&e.target.files[0];if(!file)return;
+  try{
+    const restored=validateBackup(JSON.parse(await file.text()));
+    if(!await confirmBox('Replace all data in this browser with the backup? This cannot be undone.'))return;
+    const previous=S;S=restored;
+    try{save()}catch(error){S=previous;throw error}
+    clearForm();renderAdmin();toast('Backup restored.');
+  }catch(error){toast(error instanceof SyntaxError?'The selected file is not valid JSON.':error.message||'Backup could not be restored.',true)}
+  finally{e.target.value=''}
+};
+$('#resetBtn').onclick=async()=>{if(await confirmBox('Erase ALL prototype data and restore the sample student?')){S=seed();save();clearForm();renderAdmin();toast('Data reset.')}};
+
+/* ===== System testing (works only on temporary copies) ===== */
+$('#runT').onclick=()=>{
+  const T=JSON.parse(JSON.stringify(S)),before=JSON.stringify(S),out=[];
+  T.grades=[]; /* temp copy only: tests start from an empty gradebook so real data cannot skew counts */
+  T.students.push({name:'Test Student',section:'TEST-SEC',code:'TEST-001'},{name:'Other Student',section:'TEST-SEC',code:'TEST-002'});
+  const rec=o=>Object.assign({code:'TEST-001',student:'Test Student',section:'TEST-SEC',subject:'Test Subject',grade:85,period:'Midterm',remarks:''},o);
+  const t=(name,fn)=>{try{const r=fn();out.push({name,ok:r[0],msg:r[1]})}catch(x){out.push({name,ok:false,msg:'Error: '+x.message})}};
+  t('1. Student login (codename + section)',()=>[!!authStudent(T,' test-001 ','test-sec')&&!authStudent(T,'TEST-001','WRONG')&&!authStudent(T,'NOPE-000','TEST-SEC')&&!authStudent(T,'Test Student','TEST-SEC'),'Codename + section accepted; wrong section, unknown codename, and real name rejected.']);
+  t('2. Administrator login (name + password)',()=>[authAdmin(ADMIN.name,ADMIN.pw)&&!authAdmin(ADMIN.name,'wrong')&&!authAdmin('Someone Else',ADMIN.pw),'Correct name and password accepted; wrong password or name rejected.']);
+  t('3. Required field validation',()=>[validateGrade(T,{}).length>0&&validateGrade(T,rec({subject:''})).length>0,'Empty and incomplete records are rejected.']);
+  t('4. Valid grade range 0-100',()=>[[0,50,100].every(g=>validateGrade(T,rec({grade:g})).length===0),'0, 50, and 100 are accepted.']);
+  t('5. Reject grades below 0 or above 100',()=>[[-1,101,'abc'].every(g=>validateGrade(T,rec({grade:g})).length>0),'-1, 101, and non-numbers are rejected.']);
+  t('6. Codename uniqueness',()=>[validateStudent(T,{name:'A B',section:'X',code:'test-001'}).length>0&&validateStudent(T,{name:'A B',section:'X',code:'NEW-999'}).length===0,'Duplicate codename blocked (case-insensitive); new one allowed.']);
+  t('6b. Student self-registration',()=>{const ok=validateStudent(T,{name:'New Kid',section:'TEST-SEC',code:'NEW-777'}).length===0&&validateStudent(T,{name:'mIXed CASE',section:'TEST-SEC',code:'NEW-778'}).length===0&&validateStudent(T,{name:'',section:'X',code:'Y'}).length>0&&validateStudent(T,{name:'Student 2',section:'TEST-SEC',code:'NEW-779'}).length>0&&validateStudent(T,{name:'Student!',section:'TEST-SEC',code:'NEW-780'}).length>0&&validateStudent(T,{name:'Other Kid',section:'X',code:'test-002'}).length>0&&validateStudent(T,{name:' test  student ',section:'test-sec',code:'Z-1'}).length>0;return[ok,'Letters and spaces, including mixed case, are accepted; empty, duplicate, numeric, and punctuated names are rejected.']});
+  t('7. Create grade record',()=>{const n=T.grades.length;T.grades.push(Object.assign(rec({}),{id:'t1'}));return[T.grades.length===n+1&&validateGrade(T,rec({}),undefined).length>0,'Record added; duplicate of it is now rejected.']});
+  t('8. Read and display records',()=>[filterGrades(T,'','','').some(g=>g.id==='t1'),'Record appears in the gradebook list.']);
+  t('9. Update existing record',()=>{const r=T.grades.find(g=>g.id==='t1');const ok=validateGrade(T,rec({grade:88}),'t1').length===0;r.grade=88;return[ok&&T.grades.find(g=>g.id==='t1').grade===88,'Grade changed to 88 without a false duplicate error.']});
+  t('10. Delete grade record',()=>{const n=T.grades.length;T.grades=T.grades.filter(g=>g.id!=='t1');return[T.grades.length===n-1,'Record removed.']});
+  t('11. Search and filter',()=>{T.grades.push(Object.assign(rec({}),{id:'a'}),Object.assign(rec({subject:'Other',period:'Final'}),{id:'b'}));
+    const ok=filterGrades(T,'test-001','','').length===2&&filterGrades(T,'other','','').length===1&&filterGrades(T,'','','Final').length===1&&filterGrades(T,'','Test Subject','Midterm').length===1;
+    return[ok,'Search by codename/subject and subject/period filters return expected rows.']});
+  t('12. Student grade isolation',()=>{T.grades.push(Object.assign(rec({code:'TEST-002',student:'Other Student',subject:'Other'}),{id:'o1'}));const me=authStudent(T,'TEST-001','TEST-SEC');const mine=gradesFor(T,me);return[mine.length===2&&mine.every(g=>g.code==='TEST-001'),'A student only receives their own records, never another student\'s.']});
+  t('13. Dashboard statistics',()=>{const s=stats(T);return[s.records===T.grades.length&&s.subjects===2&&s.students===T.students.length,'Counts for students, records, and subjects are correct.']});
+  t('14. Data persistence',()=>{const k='cbam2b_test_tmp';localStorage.setItem(k,JSON.stringify(T));const back=JSON.parse(localStorage.getItem(k));localStorage.removeItem(k);return[back.grades.length===T.grades.length,'Data written to localStorage and read back after reload simulation.']});
+  t('15. CSV export preparation',()=>{const c=toCSV([rec({remarks:'He said "hi"'})]);return[c.split('\r\n').length===2&&c.includes('""hi""')&&c.startsWith('"Codename"'),'Header, row, and quote escaping are correct.']});
+  t('16. Full backup validation',()=>{const b={format:'cbam2b-backup-v1',students:[{name:'Backup Student',section:'TEST-SEC',code:'BACKUP-001'}],grades:[{id:'backup-1',code:'BACKUP-001',student:'Backup Student',section:'TEST-SEC',subject:'Test Subject',period:'Final',grade:90,remarks:''}],changes:1};const restored=validateBackup(b);return[restored.students.length===1&&restored.grades[0].grade===90,'A valid full backup restores its student and grade data.']});
+  t('17. Reject malformed backups',()=>{try{validateBackup({format:'invalid',students:[],grades:[]});return[false,'Unsupported backup format was accepted.']}catch(e){return[true,'Unsupported backup format was rejected.']}});
+  t('Safety check: real data untouched',()=>[JSON.stringify(S)===before,'Real records were not modified by testing.']);
+  const p=out.filter(o=>o.ok).length;
+  $('#tSum').innerHTML=`Total: ${out.length} | Passed: ${p} | Failed: ${out.length-p}<br>Status: ${p===out.length?'<span class="pass">ALL TESTS PASSED</span>':'<span class="fail">SOME TESTS FAILED</span>'}`;
+  $('#tRes').innerHTML=out.map(o=>`<div class="res"><span class="${o.ok?'pass':'fail'}">${o.ok?'PASS':'FAIL'}</span><span><b>${esc(o.name)}</b><br><span class="muted">${esc(o.msg)}</span></span></div>`).join('');
+};
+
+pickTab('S');
+</script>
+</body>
+</html>
