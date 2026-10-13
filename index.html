@@ -282,6 +282,7 @@ table.rt td.act button{flex:1 1 0}
       <div class="panel hidden" id="pStud">
         <div class="card">
           <h2>Register student</h2>
+          <p class="muted">Self-registered and administrator-added students both appear in Student records below.</p>
           <form id="sF" novalidate>
             <div class="grid">
               <div><label for="rN">Full Name</label><input id="rN"></div>
@@ -376,7 +377,7 @@ function validateBackup(data){
   const students=data.students.map(s=>{
     if(!s||typeof s.name!=='string'||typeof s.section!=='string'||typeof s.code!=='string'||!s.name.trim()||!s.section.trim()||!s.code.trim())
       throw new Error('The backup contains an invalid student record.');
-    return {name:s.name,section:s.section,code:s.code};
+    return {name:s.name,section:s.section,code:s.code,registeredBy:s.registeredBy==='student'?'student':'administrator'};
   });
   if(new Set(students.map(s=>norm(s.code))).size!==students.length)
     throw new Error('The backup contains duplicate student codenames.');
@@ -429,7 +430,7 @@ $('#fA').onsubmit=e=>{e.preventDefault();const n=$('#aN').value,p=$('#aP').value
     user={role:'admin'};renderAdmin();goPanel('pDash');show('admin');$('#fA').reset()})};
 /* Student self-registration: validates, saves, then logs the student straight in. */
 $('#fR').onsubmit=e=>{e.preventDefault();const err=$('#eR');
-  const st={name:$('#regN').value.trim().replace(/\s+/g,' '),section:$('#regS').value.trim().replace(/\s+/g,' '),code:$('#regC').value.trim().toUpperCase()};
+  const st={name:$('#regN').value.trim().replace(/\s+/g,' '),section:$('#regS').value.trim().replace(/\s+/g,' '),code:$('#regC').value.trim().toUpperCase(),registeredBy:'student'};
   const errs=validateStudent(S,st);err.innerHTML=errs.map(esc).join('<br>');if(errs.length)return;
   S.students.push(st);save();user={role:'student',stu:st};renderStudent();show('student');
   $('#fR').reset();$('#regS').value='CBAM FM - 2B';toast('Registered! Your codename is '+st.code+'.')};
@@ -457,7 +458,7 @@ function renderAdmin(){
   const cur=$('#fSub').value,subs=[...new Set(S.grades.map(g=>g.subject))].sort();
   $('#fSub').innerHTML='<option value="">All subjects</option>'+subs.map(s=>`<option ${s===cur?'selected':''}>${esc(s)}</option>`).join('');
   renderGrades();
-  $('#sTbl').innerHTML=S.students.length?`<table class="rt"><thead><tr><th>Codename</th><th>Name</th><th>Section</th><th>Records</th><th>Action</th></tr></thead><tbody>${S.students.map(s=>`<tr><td data-l="Codename"><span class="code">${esc(s.code)}</span></td><td data-l="Name">${esc(s.name)}</td><td data-l="Section">${esc(s.section)}</td><td data-l="Records">${gradesFor(S,s).length}</td><td class="act"><button class="btn danger sm" data-ds="${esc(s.code)}">Delete</button></td></tr>`).join('')}</tbody></table>`:empty('🎓','No students','Register a student above.');
+  $('#sTbl').innerHTML=S.students.length?`<table class="rt"><thead><tr><th>Codename</th><th>Name</th><th>Section</th><th>Registered by</th><th>Records</th><th>Action</th></tr></thead><tbody>${S.students.map(s=>`<tr><td data-l="Codename"><span class="code">${esc(s.code)}</span></td><td data-l="Name">${esc(s.name)}</td><td data-l="Section">${esc(s.section)}</td><td data-l="Registered by">${s.registeredBy==='student'?'Student':'Administrator'}</td><td data-l="Records">${gradesFor(S,s).length}</td><td class="act"><button class="btn danger sm" data-ds="${esc(s.code)}">Delete</button></td></tr>`).join('')}</tbody></table>`:empty('🎓','No students','Register a student above.');
 }
 function renderGrades(){
   const list=filterGrades(S,$('#q').value,$('#fSub').value,$('#fP').value);
@@ -488,7 +489,7 @@ $('#gTbl').onclick=async e=>{
   if(db&&await confirmBox('Delete this grade record? This cannot be undone.')){
     S.grades=S.grades.filter(g=>g.id!==db.dataset.d);if(editId===db.dataset.d)clearForm();save();renderAdmin();toast('Grade record deleted.')}};
 $('#sF').onsubmit=e=>{e.preventDefault();
-  const s={name:$('#rN').value.trim(),section:$('#rS').value.trim(),code:$('#rC').value.trim().toUpperCase()};
+  const s={name:$('#rN').value.trim(),section:$('#rS').value.trim(),code:$('#rC').value.trim().toUpperCase(),registeredBy:'administrator'};
   const errs=validateStudent(S,s);$('#rE').innerHTML=errs.map(esc).join('<br>');if(errs.length)return;
   S.students.push(s);save();$('#sF').reset();$('#rS').value='CBAM FM - 2B';renderAdmin();toast('Student registered.')};
 $('#sTbl').onclick=async e=>{const b=e.target.closest('[data-ds]');if(!b)return;
@@ -530,6 +531,7 @@ $('#runT').onclick=()=>{
   t('5. Reject grades below 0 or above 100',()=>[[-1,101,'abc'].every(g=>validateGrade(T,rec({grade:g})).length>0),'-1, 101, and non-numbers are rejected.']);
   t('6. Codename uniqueness',()=>[validateStudent(T,{name:'A B',section:'X',code:'test-001'}).length>0&&validateStudent(T,{name:'A B',section:'X',code:'NEW-999'}).length===0,'Duplicate codename blocked (case-insensitive); new one allowed.']);
   t('6b. Student self-registration',()=>{const ok=validateStudent(T,{name:'New Kid',section:'TEST-SEC',code:'NEW-777'}).length===0&&validateStudent(T,{name:'mIXed CASE',section:'TEST-SEC',code:'NEW-778'}).length===0&&validateStudent(T,{name:'',section:'X',code:'Y'}).length>0&&validateStudent(T,{name:'Student 2',section:'TEST-SEC',code:'NEW-779'}).length>0&&validateStudent(T,{name:'Student!',section:'TEST-SEC',code:'NEW-780'}).length>0&&validateStudent(T,{name:'Other Kid',section:'X',code:'test-002'}).length>0&&validateStudent(T,{name:' test  student ',section:'test-sec',code:'Z-1'}).length>0;return[ok,'Letters and spaces, including mixed case, are accepted; empty, duplicate, numeric, and punctuated names are rejected.']});
+  t('6c. Registration source tracking',()=>{const registrations=[{name:'Self Registered',section:'X',code:'SELF-001',registeredBy:'student'},{name:'Admin Registered',section:'X',code:'ADMIN-001',registeredBy:'administrator'}];const restored=validateBackup({format:'cbam2b-backup-v1',students:registrations,grades:[]});return[restored.students[0].registeredBy==='student'&&restored.students[1].registeredBy==='administrator','Student and administrator registration sources are kept in saved data and backups.']});
   t('7. Create grade record',()=>{const n=T.grades.length;T.grades.push(Object.assign(rec({}),{id:'t1'}));return[T.grades.length===n+1&&validateGrade(T,rec({}),undefined).length>0,'Record added; duplicate of it is now rejected.']});
   t('8. Read and display records',()=>[filterGrades(T,'','','').some(g=>g.id==='t1'),'Record appears in the gradebook list.']);
   t('9. Update existing record',()=>{const r=T.grades.find(g=>g.id==='t1');const ok=validateGrade(T,rec({grade:88}),'t1').length===0;r.grade=88;return[ok&&T.grades.find(g=>g.id==='t1').grade===88,'Grade changed to 88 without a false duplicate error.']});
