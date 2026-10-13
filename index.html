@@ -456,7 +456,7 @@ $('#fR').onsubmit=async e=>{e.preventDefault();const err=$('#eR');
   const st={name:$('#regN').value.trim().replace(/\s+/g,' '),section:$('#regS').value.trim().replace(/\s+/g,' '),code:$('#regC').value.trim().toUpperCase()};
   const errs=validateStudent(S,st);err.innerHTML=errs.map(esc).join('<br>');if(errs.length)return;
   if(!BACKEND){err.textContent='Registration is unavailable until the administrator configures Supabase.';return}
-  try{const {error}=await db.auth.signUp({email:$('#regE').value.trim(),password:$('#regP').value,user_metadata:{full_name:st.name,section:st.section,codename:st.code}});if(error)throw error;
+  try{const {error}=await db.auth.signUp({email:$('#regE').value.trim(),password:$('#regP').value,options:{data:{full_name:st.name,section:st.section,codename:st.code},emailRedirectTo:window.location.origin+window.location.pathname}});if(error)throw error;
     $('#fR').reset();$('#regS').value='CBAM FM - 2B';err.textContent='Registration submitted. Confirm your email if requested, then wait for administrator approval.';
   }catch(error){err.textContent=error.message||'Registration could not be submitted.'}};
 /* Logout clears the session and returns to the login screen. */
