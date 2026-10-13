@@ -16,19 +16,62 @@ Deno.serve(async (request) => {
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Object.values(publishableKeys)[0];
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Object.values(secretKeys)[0];
   const authorization = request.headers.get('Authorization');
-  if (!url || !anonKey || !serviceRoleKey || !authorization) return respond({ error: 'Server configuration is incomplete.' }, 500);
-
-  const callerClient = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
-  const { data: callerResult, error: callerError } = await callerClient.auth.getUser();
-  if (callerError || !callerResult.user) return respond({ error: 'Authentication required.' }, 401);
-
+  if (!url || !serviceRoleKey) return respond({ error: 'Server configuration is incomplete.' }, 500);
   const adminClient = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
-  const { data: callerProfile, error: profileError } = await adminClient
-    .from('profiles').select('role').eq('user_id', callerResult.user.id).single();
-  if (profileError || callerProfile.role !== 'admin') return respond({ error: 'Administrator access required.' }, 403);
 
   try {
     const body = await request.json();
+    if (body.action === 'student-register') {
+      const fullName = String(body.full_name || '').trim().replace(/\s+/g, ' ');
+      const section = String(body.section || '').trim().replace(/\s+/g, ' ');
+      const codename = String(body.codename || '').trim().toUpperCase();
+      if (!/^\p{L}+(?:\s+\p{L}+)*$/u.test(fullName) || !section || section.length > 80 || !/^[A-Z0-9-]{3,32}$/.test(codename)) {
+        return respond({ error: 'Enter a valid full name, section, and codename.' }, 400);
+      }
+      const { data: existing, error: lookupError } = await adminClient.from('profiles').select('user_id').eq('codename', codename).maybeSingle();
+      if (lookupError) return respond({ error: 'Registration could not be checked.' }, 500);
+      if (existing) return respond({ error: 'That codename is already registered.' }, 409);
+
+      const email = `student-${crypto.randomUUID()}@students.cbam2b.example.com`;
+      const password = `${crypto.randomUUID()}${crypto.randomUUID()}`;
+      const { error } = await adminClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: fullName, section, codename },
+      });
+      if (error) return respond({ error: 'Registration could not be created.' }, 400);
+      return respond({ success: true, pendingApproval: true });
+    }
+
+    if (body.action === 'student-login') {
+      const codename = String(body.codename || '').trim().toUpperCase();
+      const section = String(body.section || '').trim().replace(/\s+/g, ' ').toLowerCase();
+      if (!/^[A-Z0-9-]{3,32}$/.test(codename) || !section) return respond({ error: 'Enter your codename and section.' }, 400);
+      const { data: student, error } = await adminClient.from('profiles')
+        .select('user_id,full_name,section,codename,approved,registration_source')
+        .eq('codename', codename).eq('role', 'student').maybeSingle();
+      if (error) return respond({ error: 'Student record could not be checked.' }, 500);
+      if (!student || student.section.trim().replace(/\s+/g, ' ').toLowerCase() !== section) {
+        return respond({ error: 'No student matches that codename and section.' }, 401);
+      }
+      if (!student.approved) return respond({ error: 'Your registration is awaiting administrator approval.' }, 403);
+      const { data: grades, error: gradeError } = await adminClient.from('grades').select('*').eq('student_id', student.user_id);
+      if (gradeError) return respond({ error: 'Grades could not be loaded.' }, 500);
+      return respond({
+        student: { id: student.user_id, name: student.full_name, section: student.section, code: student.codename, approved: student.approved, registeredBy: student.registration_source },
+        grades: grades.map(grade => ({ ...grade, studentId: student.user_id, student: student.full_name, section: student.section, code: student.codename })),
+      });
+    }
+
+    if (!authorization || !anonKey) return respond({ error: 'Authentication required.' }, 401);
+    const callerClient = createClient(url, anonKey, { global: { headers: { Authorization: authorization } } });
+    const { data: callerResult, error: callerError } = await callerClient.auth.getUser();
+    if (callerError || !callerResult.user) return respond({ error: 'Authentication required.' }, 401);
+    const { data: callerProfile, error: profileError } = await adminClient
+      .from('profiles').select('role').eq('user_id', callerResult.user.id).single();
+    if (profileError || callerProfile.role !== 'admin') return respond({ error: 'Administrator access required.' }, 403);
+
     if (body.action === 'create') {
       const email = String(body.email || '').trim().toLowerCase();
       const password = String(body.password || '');

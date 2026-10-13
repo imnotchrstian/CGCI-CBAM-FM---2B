@@ -196,8 +196,8 @@ table.rt td.act button{flex:1 1 0}
         <button class="tab" role="tab" id="tA" aria-selected="false">Administrator Login</button>
       </div>
       <form id="fS" novalidate>
-        <label for="sN">Email</label><input id="sN" type="email" autocomplete="username" required>
-        <label for="sS">Password</label><input id="sS" type="password" autocomplete="current-password" required>
+        <label for="sN">Codename</label><input id="sN" autocomplete="username" required>
+        <label for="sS">Section</label><input id="sS" autocomplete="off" required>
         <div class="err" id="eS" role="alert"></div>
         <button class="btn" style="width:100%;margin-top:6px">View my grades</button>
         <div class="muted" style="text-align:center;margin-top:14px;font-size:.92rem">New student? <button type="button" class="linkbtn" id="goReg">Register here</button></div>
@@ -206,11 +206,9 @@ table.rt td.act button{flex:1 1 0}
         <label for="regN">Full Name</label><input id="regN" autocomplete="off" placeholder="e.g. Juan Dela Cruz">
         <label for="regS">Section</label><input id="regS" autocomplete="off" value="CBAM FM - 2B">
         <label for="regC">Codename</label><input id="regC" autocomplete="off" placeholder="e.g. Gold-024">
-        <label for="regE">Email</label><input id="regE" type="email" autocomplete="email" required>
-        <label for="regP">Password</label><input id="regP" type="password" autocomplete="new-password" minlength="8" required>
         <div class="err" id="eR" role="alert"></div>
-        <button class="btn" style="width:100%;margin-top:6px">Register for approval</button>
-        <div class="muted" style="font-size:.8rem;margin-top:8px">An administrator must approve your account before grades are available.</div>
+        <button class="btn" style="width:100%;margin-top:6px">Register student</button>
+        <div class="muted" style="font-size:.8rem;margin-top:8px">An administrator must approve your registration before grades are available.</div>
         <div class="muted" style="text-align:center;margin-top:14px;font-size:.92rem">Already registered? <button type="button" class="linkbtn" id="goLog">Back to login</button></div>
       </form>
       <form id="fA" class="hidden" novalidate>
@@ -356,7 +354,7 @@ async function loadRemote(profile){
   if(profileError)throw profileError;
   const {data:rows,error:gradeError}=await db.from('grades').select('*');
   if(gradeError)throw gradeError;
-  const students=profiles.map(p=>({id:p.user_id,name:p.full_name,section:p.section,code:p.codename,registeredBy:p.registration_source,approved:p.approved,email:p.email}));
+  const students=profiles.map(p=>({id:p.user_id,name:p.full_name,section:p.section,code:p.codename,registeredBy:p.registration_source,approved:p.approved,email:p.email?.endsWith('@students.cbam2b.example.com')?'':p.email}));
   const byId=new Map(students.map(s=>[s.id,s]));
   return {students,grades:rows.map(g=>{const student=byId.get(g.student_id);return {...g,studentId:g.student_id,code:student?.code||'',student:student?.name||'',section:student?.section||''}}),changes:0};
 }
@@ -442,10 +440,8 @@ function pickTab(k){const stuSide=k==='S'||k==='R';$('#tS').setAttribute('aria-s
 $('#tS').onclick=()=>pickTab('S');$('#tA').onclick=()=>pickTab('A');$('#goReg').onclick=()=>{pickTab('R');$('#regN').focus()};$('#goLog').onclick=()=>{pickTab('S');$('#sN').focus()};
 $('#fS').onsubmit=async e=>{e.preventDefault();const err=$('#eS');err.textContent='';
   if(!BACKEND){err.textContent='Shared login is not configured yet. Ask the administrator to finish Supabase setup.';return}
-  try{const {data,error}=await db.auth.signInWithPassword({email:$('#sN').value.trim(),password:$('#sS').value});if(error)throw error;
-    const profile=await profileFor(data.user.id);if(profile.role!=='student')throw new Error('This account is not a student account.');
-    if(!profile.approved){await db.auth.signOut();err.textContent='Your account is awaiting administrator approval.';return}
-    S=await loadRemote(profile);user={role:'student',stu:S.students[0]};renderStudent();show('student');$('#fS').reset();
+  try{const {data,error}=await db.functions.invoke('admin-manage-student',{body:{action:'student-login',codename:$('#sN').value.trim().toUpperCase(),section:$('#sS').value.trim()}});if(error)throw error;if(data?.error)throw new Error(data.error);
+    const stu=data.student;S={students:[stu],grades:data.grades,changes:0};user={role:'student',stu};renderStudent();show('student');$('#fS').reset();
   }catch(error){err.textContent=error.message||'Could not sign in.'}};
 $('#fA').onsubmit=async e=>{e.preventDefault();const err=$('#eA');err.textContent='';
   if(!BACKEND){err.textContent='Shared login is not configured yet. Ask the administrator to finish Supabase setup.';return}
@@ -454,13 +450,13 @@ $('#fA').onsubmit=async e=>{e.preventDefault();const err=$('#eA');err.textConten
     const profile=await profileFor(data.user.id);if(profile.role!=='admin'||norm(profile.full_name)!==norm(ADMIN_NAME)){await db.auth.signOut();throw new Error('This account is not an administrator account.')}
     S=await loadRemote(profile);user={role:'admin',profile};renderAdmin();goPanel('pDash');show('admin');$('#fA').reset();
   }catch(error){err.textContent=error.message||'Could not sign in.'}};
-/* Self-registration creates a pending cloud profile; it never grants grade access before approval. */
+/* Self-registration creates a pending shared profile; approval is required before grade lookup. */
 $('#fR').onsubmit=async e=>{e.preventDefault();const err=$('#eR');
   const st={name:$('#regN').value.trim().replace(/\s+/g,' '),section:$('#regS').value.trim().replace(/\s+/g,' '),code:$('#regC').value.trim().toUpperCase()};
   const errs=validateStudent(S,st);err.innerHTML=errs.map(esc).join('<br>');if(errs.length)return;
   if(!BACKEND){err.textContent='Registration is unavailable until the administrator configures Supabase.';return}
-  try{const {error}=await db.auth.signUp({email:$('#regE').value.trim(),password:$('#regP').value,options:{data:{full_name:st.name,section:st.section,codename:st.code},emailRedirectTo:window.location.origin+window.location.pathname}});if(error)throw error;
-    $('#fR').reset();$('#regS').value='CBAM FM - 2B';err.textContent='Registration submitted. Confirm your email if requested, then wait for administrator approval.';
+  try{const {data,error}=await db.functions.invoke('admin-manage-student',{body:{action:'student-register',full_name:st.name,section:st.section,codename:st.code}});if(error)throw error;if(data?.error)throw new Error(data.error);
+    $('#fR').reset();$('#regS').value='CBAM FM - 2B';err.textContent='Registration submitted. Wait for administrator approval before logging in.';
   }catch(error){err.textContent=error.message||'Registration could not be submitted.'}};
 /* Logout clears the session and returns to the login screen. */
 $$('[data-logout]').forEach(b=>b.onclick=async()=>{if(BACKEND)await db.auth.signOut();user=null;editId=null;clearForm();show('login');toast('You have been logged out.')});

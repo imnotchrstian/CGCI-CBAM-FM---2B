@@ -12,11 +12,13 @@ The database schema is applied to the connected project, the `admin-manage-stude
 
 ## Administrator login
 
-The administrator profile is configured as **Honey Grace Capili**. The portal's administrator tab accepts the administrator name and password; Supabase uses an internal account identifier behind the scenes. Students continue to sign in with their own email and password. Keep the administrator password private and replace it if it has been shared.
+The administrator profile is configured as **Honey Grace Capili**. The portal's administrator tab accepts the administrator name and password; Supabase uses an internal account identifier behind the scenes. Keep the administrator password private and replace it if it has been shared.
+
+Students register with full name, section, and codename, then sign in with codename and section. This is intentionally simpler, but it is not strong authentication: anyone who knows or guesses both values can access that student's shared grades. Student registration remains pending until an administrator approves it.
 
 ## Authentication and access
 
-The Supabase Site URL and allowed redirect URL are set to the GitHub Pages site. Student self-signups are pending until an administrator approves them. Row-level security limits approved students to their own grades. The admin Edge Function verifies the caller's authenticated profile is an admin before account creation/deletion; its privileged key stays server-side in Supabase's built-in secret environment.
+The Supabase Site URL and allowed redirect URL are set to the GitHub Pages site. Student registrations are pending until an administrator approves them. The public student login function matches codename and section, then returns that student's grades; anyone who learns both values can impersonate that student. Administrator-only account creation, approval, and deletion verify the caller's authenticated admin profile, and the privileged key stays server-side in Supabase's built-in secret environment.
 
 ## Data safety
 
