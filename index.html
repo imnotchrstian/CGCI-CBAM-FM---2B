@@ -190,13 +190,14 @@ table.rt td.act button{flex:1 1 0}
   <div class="formside">
     <div class="card enter">
       <h2>Log in</h2>
+      <div id="backendNotice" class="warn hidden" role="status">Shared accounts are not configured yet. Add your Supabase project URL and publishable key to supabase-config.js.</div>
       <div class="tabs" role="tablist">
         <button class="tab" role="tab" id="tS" aria-selected="true">Student Login</button>
         <button class="tab" role="tab" id="tA" aria-selected="false">Administrator Login</button>
       </div>
       <form id="fS" novalidate>
-        <label for="sN">Codename</label><input id="sN" autocomplete="off">
-        <label for="sS">Section</label><input id="sS" autocomplete="off">
+        <label for="sN">Email</label><input id="sN" type="email" autocomplete="username" required>
+        <label for="sS">Password</label><input id="sS" type="password" autocomplete="current-password" required>
         <div class="err" id="eS" role="alert"></div>
         <button class="btn" style="width:100%;margin-top:6px">View my grades</button>
         <div class="muted" style="text-align:center;margin-top:14px;font-size:.92rem">New student? <button type="button" class="linkbtn" id="goReg">Register here</button></div>
@@ -205,14 +206,16 @@ table.rt td.act button{flex:1 1 0}
         <label for="regN">Full Name</label><input id="regN" autocomplete="off" placeholder="e.g. Juan Dela Cruz">
         <label for="regS">Section</label><input id="regS" autocomplete="off" value="CBAM FM - 2B">
         <label for="regC">Codename</label><input id="regC" autocomplete="off" placeholder="e.g. Gold-024">
+        <label for="regE">Email</label><input id="regE" type="email" autocomplete="email" required>
+        <label for="regP">Password</label><input id="regP" type="password" autocomplete="new-password" minlength="8" required>
         <div class="err" id="eR" role="alert"></div>
-        <button class="btn" style="width:100%;margin-top:6px">Register and view my grades</button>
-        <div class="muted" style="font-size:.8rem;margin-top:8px">Remember your codename and section. You will use them to log in next time.</div>
+        <button class="btn" style="width:100%;margin-top:6px">Register for approval</button>
+        <div class="muted" style="font-size:.8rem;margin-top:8px">An administrator must approve your account before grades are available.</div>
         <div class="muted" style="text-align:center;margin-top:14px;font-size:.92rem">Already registered? <button type="button" class="linkbtn" id="goLog">Back to login</button></div>
       </form>
       <form id="fA" class="hidden" novalidate>
-        <label for="aN">Administrator Name</label><input id="aN" autocomplete="off">
-        <label for="aP">Password</label><input id="aP" type="password" autocomplete="off">
+        <label for="aN">Administrator Email</label><input id="aN" type="email" autocomplete="username" required>
+        <label for="aP">Password</label><input id="aP" type="password" autocomplete="current-password" required>
         <div class="err" id="eA" role="alert"></div>
         <button class="btn" style="width:100%;margin-top:6px">Log in as administrator</button>
       </form>
@@ -288,6 +291,8 @@ table.rt td.act button{flex:1 1 0}
               <div><label for="rN">Full Name</label><input id="rN"></div>
               <div><label for="rS">Section</label><input id="rS" value="CBAM FM - 2B"></div>
               <div><label for="rC">Codename (unique)</label><input id="rC" placeholder="STAR-015"></div>
+              <div><label for="rEmail">Student Email</label><input id="rEmail" type="email" autocomplete="off"></div>
+              <div><label for="rPassword">Temporary Password</label><input id="rPassword" type="password" minlength="8" autocomplete="new-password"></div>
             </div>
             <div class="err" id="rE" role="alert"></div>
             <div class="row"><button class="btn">Add student</button></div>
@@ -321,10 +326,14 @@ table.rt td.act button{flex:1 1 0}
   </div>
 </section>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
 <script>
 /* ===== Data & constants ===== */
 const KEY='cbam2b_data_v1';
-const ADMIN={name:'Honey Grace Capili',pw:'CBAM2B!2026'};
+const BACKEND_CONFIG=window.CBAM_SUPABASE_CONFIG||{};
+const BACKEND=Boolean(window.supabase&&BACKEND_CONFIG.url&&BACKEND_CONFIG.publishableKey);
+const db=BACKEND?window.supabase.createClient(BACKEND_CONFIG.url,BACKEND_CONFIG.publishableKey):null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
@@ -332,12 +341,23 @@ const norm=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
 const seed=()=>({students:[{name:'Saint Mae Diamsey',section:'CBAM FM - 2B',code:'GOLD-024'}],grades:[],changes:0});
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.students)&&Array.isArray(d.grades))return d}catch(e){}return seed()}
 function save(){localStorage.setItem(KEY,JSON.stringify(S))}
-let S=load(), user=null, editId=null;
+let S=BACKEND?{students:[],grades:[],changes:0}:load(), user=null, editId=null;
 
 /* ===== Pure logic (takes state as argument so tests can use temp copies) ===== */
 /* Students log in with codename + section (never with their real name). */
 function authStudent(st,code,sec){return st.students.find(x=>norm(x.code)===norm(code)&&norm(x.section)===norm(sec))||null}
-function authAdmin(n,pw){return norm(n)===norm(ADMIN.name)&&pw===ADMIN.pw}
+function authAdmin(){return false}
+async function profileFor(userId){const {data,error}=await db.from('profiles').select('*').eq('user_id',userId).single();if(error)throw error;return data}
+async function loadRemote(profile){
+  const profilesQuery=db.from('profiles').select('*');
+  const {data:profiles,error:profileError}=profile.role==='admin'?await profilesQuery:await profilesQuery.eq('user_id',profile.user_id);
+  if(profileError)throw profileError;
+  const {data:rows,error:gradeError}=await db.from('grades').select('*');
+  if(gradeError)throw gradeError;
+  const students=profiles.map(p=>({id:p.user_id,name:p.full_name,section:p.section,code:p.codename,registeredBy:p.registration_source,approved:p.approved,email:p.email}));
+  const byId=new Map(students.map(s=>[s.id,s]));
+  return {students,grades:rows.map(g=>{const student=byId.get(g.student_id);return {...g,studentId:g.student_id,code:student?.code||'',student:student?.name||'',section:student?.section||''}}),changes:0};
+}
 /* Returns list of error strings for a grade record; skipId = record being edited. */
 function validateGrade(st,r,skipId){
   const e=[];
@@ -418,24 +438,29 @@ $('#pauseBtn').onclick=e=>{paused=!paused;e.target.setAttribute('aria-pressed',p
 function pickTab(k){const stuSide=k==='S'||k==='R';$('#tS').setAttribute('aria-selected',stuSide);$('#tA').setAttribute('aria-selected',!stuSide);
   $('#fS').classList.toggle('hidden',k!=='S');$('#fR').classList.toggle('hidden',k!=='R');$('#fA').classList.toggle('hidden',k!=='A')}
 $('#tS').onclick=()=>pickTab('S');$('#tA').onclick=()=>pickTab('A');$('#goReg').onclick=()=>{pickTab('R');$('#regN').focus()};$('#goLog').onclick=()=>{pickTab('S');$('#sN').focus()};
-function withLoading(btn,fn){const old=btn.innerHTML;btn.innerHTML='<span class="spin"></span> Checking...';btn.disabled=true;setTimeout(()=>{btn.innerHTML=old;btn.disabled=false;fn()},450)}
-$('#fS').onsubmit=e=>{e.preventDefault();const n=$('#sN').value,s=$('#sS').value,err=$('#eS');err.textContent='';
-  if(!n.trim()||!s.trim()){err.textContent='Enter both your codename and section.';return}
-  withLoading(e.submitter||$('#fS button'),()=>{const stu=authStudent(S,n,s);
-    if(!stu){err.textContent='No student matches that codename and section. Check them, or ask your administrator.';return}
-    user={role:'student',stu};renderStudent();show('student');$('#fS').reset()})};
-$('#fA').onsubmit=e=>{e.preventDefault();const n=$('#aN').value,p=$('#aP').value,err=$('#eA');err.textContent='';
-  if(!n.trim()||!p){err.textContent='Enter the administrator name and password.';return}
-  withLoading(e.submitter||$('#fA button'),()=>{if(!authAdmin(n,p)){err.textContent='Those credentials are not valid.';return}
-    user={role:'admin'};renderAdmin();goPanel('pDash');show('admin');$('#fA').reset()})};
-/* Student self-registration: validates, saves, then logs the student straight in. */
-$('#fR').onsubmit=e=>{e.preventDefault();const err=$('#eR');
-  const st={name:$('#regN').value.trim().replace(/\s+/g,' '),section:$('#regS').value.trim().replace(/\s+/g,' '),code:$('#regC').value.trim().toUpperCase(),registeredBy:'student'};
+$('#fS').onsubmit=async e=>{e.preventDefault();const err=$('#eS');err.textContent='';
+  if(!BACKEND){err.textContent='Shared login is not configured yet. Ask the administrator to finish Supabase setup.';return}
+  try{const {data,error}=await db.auth.signInWithPassword({email:$('#sN').value.trim(),password:$('#sS').value});if(error)throw error;
+    const profile=await profileFor(data.user.id);if(profile.role!=='student')throw new Error('This account is not a student account.');
+    if(!profile.approved){await db.auth.signOut();err.textContent='Your account is awaiting administrator approval.';return}
+    S=await loadRemote(profile);user={role:'student',stu:S.students[0]};renderStudent();show('student');$('#fS').reset();
+  }catch(error){err.textContent=error.message||'Could not sign in.'}};
+$('#fA').onsubmit=async e=>{e.preventDefault();const err=$('#eA');err.textContent='';
+  if(!BACKEND){err.textContent='Shared login is not configured yet. Ask the administrator to finish Supabase setup.';return}
+  try{const {data,error}=await db.auth.signInWithPassword({email:$('#aN').value.trim(),password:$('#aP').value});if(error)throw error;
+    const profile=await profileFor(data.user.id);if(profile.role!=='admin'){await db.auth.signOut();throw new Error('This account is not an administrator account.')}
+    S=await loadRemote(profile);user={role:'admin',profile};renderAdmin();goPanel('pDash');show('admin');$('#fA').reset();
+  }catch(error){err.textContent=error.message||'Could not sign in.'}};
+/* Self-registration creates a pending cloud profile; it never grants grade access before approval. */
+$('#fR').onsubmit=async e=>{e.preventDefault();const err=$('#eR');
+  const st={name:$('#regN').value.trim().replace(/\s+/g,' '),section:$('#regS').value.trim().replace(/\s+/g,' '),code:$('#regC').value.trim().toUpperCase()};
   const errs=validateStudent(S,st);err.innerHTML=errs.map(esc).join('<br>');if(errs.length)return;
-  S.students.push(st);save();user={role:'student',stu:st};renderStudent();show('student');
-  $('#fR').reset();$('#regS').value='CBAM FM - 2B';toast('Registered! Your codename is '+st.code+'.')};
+  if(!BACKEND){err.textContent='Registration is unavailable until the administrator configures Supabase.';return}
+  try{const {error}=await db.auth.signUp({email:$('#regE').value.trim(),password:$('#regP').value,user_metadata:{full_name:st.name,section:st.section,codename:st.code}});if(error)throw error;
+    $('#fR').reset();$('#regS').value='CBAM FM - 2B';err.textContent='Registration submitted. Confirm your email if requested, then wait for administrator approval.';
+  }catch(error){err.textContent=error.message||'Registration could not be submitted.'}};
 /* Logout clears the session and returns to the login screen. */
-$$('[data-logout]').forEach(b=>b.onclick=()=>{user=null;editId=null;clearForm();show('login');toast('You have been logged out.')});
+$$('[data-logout]').forEach(b=>b.onclick=async()=>{if(BACKEND)await db.auth.signOut();user=null;editId=null;clearForm();show('login');toast('You have been logged out.')});
 
 /* ===== Student dashboard (only the logged-in student's rows) ===== */
 function renderStudent(){
@@ -453,12 +478,13 @@ function goPanel(id){$$('.panel').forEach(p=>p.classList.toggle('hidden',p.id!==
 $$('#nav button[data-p]').forEach(b=>b.onclick=()=>goPanel(b.dataset.p));
 function renderAdmin(){
   const st=stats(S);
+  $('#pDash h1').textContent='Welcome, '+(user?.profile?.full_name||'Administrator');
   $('#stats').innerHTML=[['Registered students',st.students],['Grade records',st.records],['Subjects recorded',st.subjects],['Records added or updated',st.changes]].map(x=>`<div class="card stat"><span class="muted">${x[0]}</span><b>${x[1]}</b></div>`).join('');
   $('#codes').innerHTML=S.students.map(s=>`<option value="${esc(s.code)}">${esc(s.name)}</option>`).join('');
   const cur=$('#fSub').value,subs=[...new Set(S.grades.map(g=>g.subject))].sort();
   $('#fSub').innerHTML='<option value="">All subjects</option>'+subs.map(s=>`<option ${s===cur?'selected':''}>${esc(s)}</option>`).join('');
   renderGrades();
-  $('#sTbl').innerHTML=S.students.length?`<table class="rt"><thead><tr><th>Codename</th><th>Name</th><th>Section</th><th>Registered by</th><th>Records</th><th>Action</th></tr></thead><tbody>${S.students.map(s=>`<tr><td data-l="Codename"><span class="code">${esc(s.code)}</span></td><td data-l="Name">${esc(s.name)}</td><td data-l="Section">${esc(s.section)}</td><td data-l="Registered by">${s.registeredBy==='student'?'Student':'Administrator'}</td><td data-l="Records">${gradesFor(S,s).length}</td><td class="act"><button class="btn danger sm" data-ds="${esc(s.code)}">Delete</button></td></tr>`).join('')}</tbody></table>`:empty('🎓','No students','Register a student above.');
+  $('#sTbl').innerHTML=S.students.length?`<table class="rt"><thead><tr><th>Codename</th><th>Name</th><th>Email</th><th>Section</th><th>Registration</th><th>Records</th><th>Action</th></tr></thead><tbody>${S.students.map(s=>`<tr><td data-l="Codename"><span class="code">${esc(s.code)}</span></td><td data-l="Name">${esc(s.name)}</td><td data-l="Email">${esc(s.email||'-')}</td><td data-l="Section">${esc(s.section)}</td><td data-l="Registration">${s.approved===false?'Pending approval':s.registeredBy==='student'?'Student':'Administrator'}</td><td data-l="Records">${gradesFor(S,s).length}</td><td class="act">${s.approved===false?`<button class="btn sm" data-approve="${esc(s.id)}">Approve</button> `:''}<button class="btn danger sm" data-ds="${esc(s.id)}">Delete</button></td></tr>`).join('')}</tbody></table>`:empty('🎓','No students','Register a student above.');
 }
 function renderGrades(){
   const list=filterGrades(S,$('#q').value,$('#fSub').value,$('#fP').value);
@@ -472,31 +498,59 @@ $('#gC').oninput=()=>{const s=S.students.find(x=>norm(x.code)===norm($('#gC').va
 function clearForm(){editId=null;$('#gF').reset();$('#gE').textContent='';$('#formTitle').textContent='Add grade record';$('#gSave').textContent='Save record'}
 $('#gCancel').onclick=clearForm;
 /* Create or update a grade record. */
-$('#gF').onsubmit=e=>{e.preventDefault();
+$('#gF').onsubmit=async e=>{e.preventDefault();
   const r={code:$('#gC').value.trim().toUpperCase(),student:$('#gN').value.trim(),section:$('#gSec').value.trim(),subject:$('#gSub').value.trim(),grade:$('#gG').value,period:$('#gP').value,remarks:$('#gR').value.trim()};
   const errs=validateGrade(S,r,editId);$('#gE').innerHTML=errs.map(esc).join('<br>');
   if(errs.length){toast('Fix the highlighted problems.',true);return}
   r.grade=Number(r.grade);
-  if(editId){Object.assign(S.grades.find(g=>g.id===editId),r);toast('Grade record updated.')}
-  else{r.id='g'+Date.now()+Math.random().toString(36).slice(2,6);S.grades.push(r);toast('Grade record added.')}
-  S.changes=(S.changes||0)+1;save();clearForm();renderAdmin()};
+  try{
+    if(BACKEND){
+      const student=S.students.find(s=>norm(s.code)===norm(r.code));
+      const payload={student_id:student?.id,subject:r.subject,period:r.period,grade:r.grade,remarks:r.remarks};
+      if(editId){const {error}=await db.from('grades').update(payload).eq('id',editId);if(error)throw error;toast('Grade record updated.')}
+      else{const {error}=await db.from('grades').insert(payload);if(error)throw error;toast('Grade record added.')}
+      S=await loadRemote(user.profile);
+    }else{
+      if(editId){Object.assign(S.grades.find(g=>g.id===editId),r);toast('Grade record updated.')}
+      else{r.id='g'+Date.now()+Math.random().toString(36).slice(2,6);S.grades.push(r);toast('Grade record added.')}
+      S.changes=(S.changes||0)+1;save();
+    }
+    clearForm();renderAdmin();
+  }catch(error){toast(error.message||'Grade could not be saved.',true)}
+};
 /* Edit/Delete via event delegation on the tables. */
 $('#gTbl').onclick=async e=>{
-  const eb=e.target.closest('[data-e]'),db=e.target.closest('[data-d]');
+  const eb=e.target.closest('[data-e]'),deleteButton=e.target.closest('[data-d]');
   if(eb){const g=S.grades.find(x=>x.id===eb.dataset.e);editId=g.id;
     $('#gC').value=g.code;$('#gN').value=g.student;$('#gSec').value=g.section;$('#gSub').value=g.subject;$('#gG').value=g.grade;$('#gP').value=g.period;$('#gR').value=g.remarks||'';
     $('#formTitle').textContent='Edit grade record';$('#gSave').textContent='Update record';$('#gF').scrollIntoView({behavior:'smooth'});$('#gC').focus()}
-  if(db&&await confirmBox('Delete this grade record? This cannot be undone.')){
-    S.grades=S.grades.filter(g=>g.id!==db.dataset.d);if(editId===db.dataset.d)clearForm();save();renderAdmin();toast('Grade record deleted.')}};
-$('#sF').onsubmit=e=>{e.preventDefault();
-  const s={name:$('#rN').value.trim(),section:$('#rS').value.trim(),code:$('#rC').value.trim().toUpperCase(),registeredBy:'administrator'};
+  if(deleteButton&&await confirmBox('Delete this grade record? This cannot be undone.')){
+    if(BACKEND){const {error}=await db.from('grades').delete().eq('id',deleteButton.dataset.d);if(error){toast(error.message,true);return}S=await loadRemote(user.profile)}
+    else{S.grades=S.grades.filter(g=>g.id!==deleteButton.dataset.d);save()}
+    if(editId===deleteButton.dataset.d)clearForm();renderAdmin();toast('Grade record deleted.')}};
+$('#sF').onsubmit=async e=>{e.preventDefault();
+  const s={name:$('#rN').value.trim(),section:$('#rS').value.trim(),code:$('#rC').value.trim().toUpperCase()};
   const errs=validateStudent(S,s);$('#rE').innerHTML=errs.map(esc).join('<br>');if(errs.length)return;
-  S.students.push(s);save();$('#sF').reset();$('#rS').value='CBAM FM - 2B';renderAdmin();toast('Student registered.')};
-$('#sTbl').onclick=async e=>{const b=e.target.closest('[data-ds]');if(!b)return;
-  if(await confirmBox('Delete this student and all of their grade records?')){
-    const s=S.students.find(x=>x.code===b.dataset.ds);S.grades=S.grades.filter(g=>norm(g.code)!==norm(s.code));
-    if(editId&&!S.grades.some(g=>g.id===editId))clearForm();
-    S.students=S.students.filter(x=>x!==s);save();renderAdmin();toast('Student deleted.')}};
+  if(!BACKEND){$('#rE').textContent='Administrator account creation requires the configured Supabase backend.';return}
+  try{
+    const {data,error}=await db.functions.invoke('admin-manage-student',{body:{action:'create',email:$('#rEmail').value.trim(),password:$('#rPassword').value,full_name:s.name,section:s.section,codename:s.code}});
+    if(error)throw error;if(data?.error)throw new Error(data.error);
+    S=await loadRemote(user.profile);$('#sF').reset();$('#rS').value='CBAM FM - 2B';renderAdmin();toast('Student account created and approved.');
+  }catch(error){$('#rE').textContent=error.message||'Student account could not be created.'}
+};
+$('#sTbl').onclick=async e=>{
+  const approveButton=e.target.closest('[data-approve]'),deleteButton=e.target.closest('[data-ds]');
+  if(approveButton){
+    const {error}=await db.from('profiles').update({approved:true}).eq('user_id',approveButton.dataset.approve);
+    if(error){toast(error.message,true);return}S=await loadRemote(user.profile);renderAdmin();toast('Student account approved.');return;
+  }
+  if(!deleteButton||!await confirmBox('Delete this student account and all of their grade records?'))return;
+  try{
+    if(BACKEND){const {data,error}=await db.functions.invoke('admin-manage-student',{body:{action:'delete',user_id:deleteButton.dataset.ds}});if(error)throw error;if(data?.error)throw new Error(data.error);S=await loadRemote(user.profile)}
+    else{const student=S.students.find(x=>x.id===deleteButton.dataset.ds||x.code===deleteButton.dataset.ds);S.grades=S.grades.filter(g=>norm(g.code)!==norm(student.code));S.students=S.students.filter(x=>x!==student);save()}
+    if(editId&&!S.grades.some(g=>g.id===editId))clearForm();renderAdmin();toast('Student deleted.');
+  }catch(error){toast(error.message||'Student could not be deleted.',true)}
+};
 $('#csvBtn').onclick=()=>{const list=filterGrades(S,$('#q').value,$('#fSub').value,$('#fP').value);
   if(!list.length){toast('No records to export.',true);return}
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+toCSV(list)],{type:'text/csv'}));a.download='cbam-fm-2b-grades.csv';a.click();toast('CSV exported.')};
@@ -525,7 +579,7 @@ $('#runT').onclick=()=>{
   const rec=o=>Object.assign({code:'TEST-001',student:'Test Student',section:'TEST-SEC',subject:'Test Subject',grade:85,period:'Midterm',remarks:''},o);
   const t=(name,fn)=>{try{const r=fn();out.push({name,ok:r[0],msg:r[1]})}catch(x){out.push({name,ok:false,msg:'Error: '+x.message})}};
   t('1. Student login (codename + section)',()=>[!!authStudent(T,' test-001 ','test-sec')&&!authStudent(T,'TEST-001','WRONG')&&!authStudent(T,'NOPE-000','TEST-SEC')&&!authStudent(T,'Test Student','TEST-SEC'),'Codename + section accepted; wrong section, unknown codename, and real name rejected.']);
-  t('2. Administrator login (name + password)',()=>[authAdmin(ADMIN.name,ADMIN.pw)&&!authAdmin(ADMIN.name,'wrong')&&!authAdmin('Someone Else',ADMIN.pw),'Correct name and password accepted; wrong password or name rejected.']);
+  t('2. No client-side administrator credentials',()=>[authAdmin()===false,'Administrator authentication is delegated to Supabase Auth rather than a password embedded in the page.']);
   t('3. Required field validation',()=>[validateGrade(T,{}).length>0&&validateGrade(T,rec({subject:''})).length>0,'Empty and incomplete records are rejected.']);
   t('4. Valid grade range 0-100',()=>[[0,50,100].every(g=>validateGrade(T,rec({grade:g})).length===0),'0, 50, and 100 are accepted.']);
   t('5. Reject grades below 0 or above 100',()=>[[-1,101,'abc'].every(g=>validateGrade(T,rec({grade:g})).length>0),'-1, 101, and non-numbers are rejected.']);
@@ -552,6 +606,7 @@ $('#runT').onclick=()=>{
 };
 
 pickTab('S');
+if(!BACKEND)$('#backendNotice').classList.remove('hidden');
 </script>
 </body>
 </html>
