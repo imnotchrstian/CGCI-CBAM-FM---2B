@@ -10,17 +10,9 @@ The database schema is applied to the connected project, the `admin-manage-stude
 
 `supabase-config.js` contains the project's public Project URL and publishable key. These settings are expected to be visible in the browser. Never put a `service_role` or secret key there.
 
-## First administrator
+## Administrator login
 
-The first account starts as a pending student so it can be created through Supabase Auth. After registering and confirming its email, run this once in the Supabase SQL Editor, replacing the email:
-
-```sql
-update public.profiles
-set role = 'admin', approved = true
-where email = lower('ADMIN_EMAIL_ADDRESS');
-```
-
-Use the same email and password on the Administrator Login tab. Keep the password private.
+The administrator profile is configured as **Honey Grace Capili**. The portal's administrator tab accepts the administrator name and password; Supabase uses an internal account identifier behind the scenes. Students continue to sign in with their own email and password. Keep the administrator password private and replace it if it has been shared.
 
 ## Authentication and access
 

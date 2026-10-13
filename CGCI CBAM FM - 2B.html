@@ -214,7 +214,7 @@ table.rt td.act button{flex:1 1 0}
         <div class="muted" style="text-align:center;margin-top:14px;font-size:.92rem">Already registered? <button type="button" class="linkbtn" id="goLog">Back to login</button></div>
       </form>
       <form id="fA" class="hidden" novalidate>
-        <label for="aN">Administrator Email</label><input id="aN" type="email" autocomplete="username" required>
+        <label for="aN">Administrator Name</label><input id="aN" autocomplete="username" placeholder="Honey Grace Capili" required>
         <label for="aP">Password</label><input id="aP" type="password" autocomplete="current-password" required>
         <div class="err" id="eA" role="alert"></div>
         <button class="btn" style="width:100%;margin-top:6px">Log in as administrator</button>
@@ -331,6 +331,8 @@ table.rt td.act button{flex:1 1 0}
 <script>
 /* ===== Data & constants ===== */
 const KEY='cbam2b_data_v1';
+const ADMIN_NAME='Honey Grace Capili';
+const ADMIN_LOGIN_ID='honey.grace.capili@cbam2b.example.com';
 const BACKEND_CONFIG=window.CBAM_SUPABASE_CONFIG||{};
 const BACKEND=Boolean(window.supabase&&BACKEND_CONFIG.url&&BACKEND_CONFIG.publishableKey);
 const db=BACKEND?window.supabase.createClient(BACKEND_CONFIG.url,BACKEND_CONFIG.publishableKey):null;
@@ -350,7 +352,7 @@ function authAdmin(){return false}
 async function profileFor(userId){const {data,error}=await db.from('profiles').select('*').eq('user_id',userId).single();if(error)throw error;return data}
 async function loadRemote(profile){
   const profilesQuery=db.from('profiles').select('*');
-  const {data:profiles,error:profileError}=profile.role==='admin'?await profilesQuery:await profilesQuery.eq('user_id',profile.user_id);
+  const {data:profiles,error:profileError}=profile.role==='admin'?await profilesQuery.eq('role','student'):await profilesQuery.eq('user_id',profile.user_id);
   if(profileError)throw profileError;
   const {data:rows,error:gradeError}=await db.from('grades').select('*');
   if(gradeError)throw gradeError;
@@ -447,8 +449,9 @@ $('#fS').onsubmit=async e=>{e.preventDefault();const err=$('#eS');err.textConten
   }catch(error){err.textContent=error.message||'Could not sign in.'}};
 $('#fA').onsubmit=async e=>{e.preventDefault();const err=$('#eA');err.textContent='';
   if(!BACKEND){err.textContent='Shared login is not configured yet. Ask the administrator to finish Supabase setup.';return}
-  try{const {data,error}=await db.auth.signInWithPassword({email:$('#aN').value.trim(),password:$('#aP').value});if(error)throw error;
-    const profile=await profileFor(data.user.id);if(profile.role!=='admin'){await db.auth.signOut();throw new Error('This account is not an administrator account.')}
+  try{if(norm($('#aN').value)!==norm(ADMIN_NAME))throw new Error('Administrator name is not recognized.');
+    const {data,error}=await db.auth.signInWithPassword({email:ADMIN_LOGIN_ID,password:$('#aP').value});if(error)throw error;
+    const profile=await profileFor(data.user.id);if(profile.role!=='admin'||norm(profile.full_name)!==norm(ADMIN_NAME)){await db.auth.signOut();throw new Error('This account is not an administrator account.')}
     S=await loadRemote(profile);user={role:'admin',profile};renderAdmin();goPanel('pDash');show('admin');$('#fA').reset();
   }catch(error){err.textContent=error.message||'Could not sign in.'}};
 /* Self-registration creates a pending cloud profile; it never grants grade access before approval. */
