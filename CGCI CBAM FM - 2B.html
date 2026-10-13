@@ -289,8 +289,6 @@ table.rt td.act button{flex:1 1 0}
               <div><label for="rN">Full Name</label><input id="rN"></div>
               <div><label for="rS">Section</label><input id="rS" value="CBAM FM - 2B"></div>
               <div><label for="rC">Codename (unique)</label><input id="rC" placeholder="STAR-015"></div>
-              <div><label for="rEmail">Student Email</label><input id="rEmail" type="email" autocomplete="off"></div>
-              <div><label for="rPassword">Temporary Password</label><input id="rPassword" type="password" minlength="8" autocomplete="new-password"></div>
             </div>
             <div class="err" id="rE" role="alert"></div>
             <div class="row"><button class="btn">Add student</button></div>
@@ -337,6 +335,10 @@ const db=BACKEND?window.supabase.createClient(BACKEND_CONFIG.url,BACKEND_CONFIG.
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
+async function functionError(error,fallback){
+  try{const body=error?.context instanceof Response?await error.context.clone().json():null;return body?.error||body?.message||error?.message||fallback}
+  catch{return error?.message||fallback}
+}
 /* Sample data: one student, one codename, NO invented grades. */
 const seed=()=>({students:[{name:'Saint Mae Diamsey',section:'CBAM FM - 2B',code:'GOLD-024'}],grades:[],changes:0});
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.students)&&Array.isArray(d.grades))return d}catch(e){}return seed()}
@@ -442,7 +444,7 @@ $('#fS').onsubmit=async e=>{e.preventDefault();const err=$('#eS');err.textConten
   if(!BACKEND){err.textContent='Shared login is not configured yet. Ask the administrator to finish Supabase setup.';return}
   try{const {data,error}=await db.functions.invoke('admin-manage-student',{body:{action:'student-login',codename:$('#sN').value.trim().toUpperCase(),section:$('#sS').value.trim()}});if(error)throw error;if(data?.error)throw new Error(data.error);
     const stu=data.student;S={students:[stu],grades:data.grades,changes:0};user={role:'student',stu};renderStudent();show('student');$('#fS').reset();
-  }catch(error){err.textContent=error.message||'Could not sign in.'}};
+  }catch(error){err.textContent=await functionError(error,'Could not sign in.')}};
 $('#fA').onsubmit=async e=>{e.preventDefault();const err=$('#eA');err.textContent='';
   if(!BACKEND){err.textContent='Shared login is not configured yet. Ask the administrator to finish Supabase setup.';return}
   try{if(norm($('#aN').value)!==norm(ADMIN_NAME))throw new Error('Administrator name is not recognized.');
@@ -457,7 +459,7 @@ $('#fR').onsubmit=async e=>{e.preventDefault();const err=$('#eR');
   if(!BACKEND){err.textContent='Registration is unavailable until the administrator configures Supabase.';return}
   try{const {data,error}=await db.functions.invoke('admin-manage-student',{body:{action:'student-register',full_name:st.name,section:st.section,codename:st.code}});if(error)throw error;if(data?.error)throw new Error(data.error);
     $('#fR').reset();$('#regS').value='CBAM FM - 2B';err.textContent='Registration submitted. Wait for administrator approval before logging in.';
-  }catch(error){err.textContent=error.message||'Registration could not be submitted.'}};
+  }catch(error){err.textContent=await functionError(error,'Registration could not be submitted.')}};
 /* Logout clears the session and returns to the login screen. */
 $$('[data-logout]').forEach(b=>b.onclick=async()=>{if(BACKEND)await db.auth.signOut();user=null;editId=null;clearForm();show('login');toast('You have been logged out.')});
 
@@ -532,10 +534,10 @@ $('#sF').onsubmit=async e=>{e.preventDefault();
   const errs=validateStudent(S,s);$('#rE').innerHTML=errs.map(esc).join('<br>');if(errs.length)return;
   if(!BACKEND){$('#rE').textContent='Administrator account creation requires the configured Supabase backend.';return}
   try{
-    const {data,error}=await db.functions.invoke('admin-manage-student',{body:{action:'create',email:$('#rEmail').value.trim(),password:$('#rPassword').value,full_name:s.name,section:s.section,codename:s.code}});
+    const {data,error}=await db.functions.invoke('admin-manage-student',{body:{action:'create',full_name:s.name,section:s.section,codename:s.code}});
     if(error)throw error;if(data?.error)throw new Error(data.error);
     S=await loadRemote(user.profile);$('#sF').reset();$('#rS').value='CBAM FM - 2B';renderAdmin();toast('Student account created and approved.');
-  }catch(error){$('#rE').textContent=error.message||'Student account could not be created.'}
+  }catch(error){$('#rE').textContent=await functionError(error,'Student account could not be created.')}
 };
 $('#sTbl').onclick=async e=>{
   const approveButton=e.target.closest('[data-approve]'),deleteButton=e.target.closest('[data-ds]');
